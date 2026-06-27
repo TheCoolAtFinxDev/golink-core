@@ -8,9 +8,11 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiSecurity, ApiTags, ApiHeader, ApiResponse, ApiParam } from '@nestjs/swagger';
+import type { Response } from 'express';
+import { ApiBearerAuth, ApiOperation, ApiSecurity, ApiTags, ApiHeader, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import {
   IsEnum,
   IsInt,
@@ -19,7 +21,31 @@ import {
   IsOptional,
   IsString,
   Min,
+  IsNumberString,
 } from 'class-validator';
+
+class ListPaymentsQueryDto {
+  @IsOptional() @IsEnum(['PENDING','PROCESSING','SUCCEEDED','FAILED','CANCELLED'])
+  status?: string;
+
+  @IsOptional() @IsString()
+  from?: string;
+
+  @IsOptional() @IsString()
+  to?: string;
+
+  @IsOptional() @IsEnum(['CARD','MPESA','ECOCASH','EFT'])
+  rail?: string;
+
+  @IsOptional() @IsNumberString()
+  limit?: number;
+
+  @IsOptional() @IsNumberString()
+  offset?: number;
+
+  @IsOptional() @IsEnum(['json','csv'])
+  format?: 'json' | 'csv';
+}
 
 class RefundPaymentDto {
   @IsOptional() @IsInt() @Min(1)
@@ -100,6 +126,61 @@ original response without re-executing. Safe to retry on network failures.
     return this.paymentsService.submit(dto, client);
   }
 
+  @Get()
+  @ApiOperation({
+    summary: 'List payment instructions',
+    description: `Returns a paginated list of payment instructions for the calling merchant.
+
+**Filters:** All query parameters are optional and combinable.
+
+**CSV export:** Set \`format=csv\` to receive a plain-text CSV for reconciliation. The response \`Content-Type\` will be \`text/csv\` and triggers a file download.`,
+  })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING','PROCESSING','SUCCEEDED','FAILED','CANCELLED'] })
+  @ApiQuery({ name: 'rail', required: false, enum: ['CARD','MPESA','ECOCASH','EFT'] })
+  @ApiQuery({ name: 'from', required: false, description: 'ISO 8601 start date (inclusive), e.g. 2026-06-01T00:00:00Z' })
+  @ApiQuery({ name: 'to', required: false, description: 'ISO 8601 end date (inclusive), e.g. 2026-06-30T23:59:59Z' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max results (default 50, max 200)' })
+  @ApiQuery({ name: 'offset', required: false, description: 'Pagination offset (default 0)' })
+  @ApiQuery({ name: 'format', required: false, enum: ['json','csv'], description: 'Response format. Use csv for reconciliation export.' })
+  @ApiResponse({ status: 200, description: 'List of payment instructions (JSON or CSV)' })
+  async list(
+    @Query() query: ListPaymentsQueryDto,
+    @ApiClient() client: ApiClientContext,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const payments = await this.paymentsService.findAll(client.merchantId, {
+      status: query.status,
+      from: query.from,
+      to: query.to,
+      rail: query.rail,
+      limit: query.limit ? Number(query.limit) : 50,
+      offset: query.offset ? Number(query.offset) : 0,
+    });
+
+    if (query.format === 'csv') {
+      const header = 'id,direction,rail,status,amountMinor,currency,sourceReference,description,createdAt';
+      const rows = payments.map(p =>
+        [
+          p.id,
+          p.direction,
+          p.rail,
+          p.status,
+          Math.round(Number(p.amount) * 100),
+          p.currency,
+          p.sourceReference ?? '',
+          (p.description ?? '').replace(/,/g, ';'),
+          p.createdAt.toISOString(),
+        ].join(','),
+      );
+      const csv = [header, ...rows].join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="payments-${Date.now()}.csv"`);
+      return csv;
+    }
+
+    return payments;
+  }
+
   @Get(':id')
   @ApiOperation({
     summary: 'Get a payment instruction',
@@ -156,8 +237,31 @@ export class AdminPaymentsController {
   @Get()
   @RequirePermission(PermissionCodes.PAYMENTS_READ)
   @ApiOperation({ summary: 'List payments (admin)' })
-  findAll(@Query('merchantId') merchantId?: string) {
-    return this.paymentsService.findAllAdmin(merchantId);
+  @ApiQuery({ name: 'merchantId', required: false })
+  @ApiQuery({ name: 'status', required: false, enum: ['PENDING','PROCESSING','SUCCEEDED','FAILED','CANCELLED'] })
+  @ApiQuery({ name: 'rail', required: false, enum: ['CARD','MPESA','ECOCASH','EFT'] })
+  @ApiQuery({ name: 'from', required: false, description: 'ISO 8601 start date' })
+  @ApiQuery({ name: 'to', required: false, description: 'ISO 8601 end date' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max results (default 100, max 500)' })
+  @ApiQuery({ name: 'offset', required: false })
+  findAll(
+    @Query('merchantId') merchantId?: string,
+    @Query('status') status?: string,
+    @Query('rail') rail?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.paymentsService.findAllAdmin({
+      merchantId,
+      status,
+      rail,
+      from,
+      to,
+      limit: limit ? Number(limit) : 100,
+      offset: offset ? Number(offset) : 0,
+    });
   }
 
   @Get(':id')

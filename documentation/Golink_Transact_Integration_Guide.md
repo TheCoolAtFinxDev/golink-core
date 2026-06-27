@@ -148,7 +148,105 @@ POST /payments/:id/refund
 
 ---
 
-## 6. Stored Payment Methods
+## 6. Listing & Reconciliation
+
+### 6.1 List payment instructions
+
+```
+GET /payments
+```
+
+Returns a paginated list of payment instructions scoped to the calling merchant. All query parameters are optional and combinable.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `status` | string | Filter by status: `PENDING`, `PROCESSING`, `SUCCEEDED`, `FAILED`, `CANCELLED` |
+| `rail` | string | Filter by rail: `MPESA`, `ECOCASH`, `CARD`, `EFT` |
+| `from` | ISO 8601 | Start of date range (inclusive), e.g. `2026-06-01T00:00:00Z` |
+| `to` | ISO 8601 | End of date range (inclusive), e.g. `2026-06-30T23:59:59Z` |
+| `limit` | integer | Max results to return (default 50, max 200) |
+| `offset` | integer | Pagination offset (default 0) |
+| `format` | string | `json` (default) or `csv` |
+
+**Example — fetch all succeeded M-PESA payments for June:**
+
+```
+GET /payments?status=SUCCEEDED&rail=MPESA&from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z
+```
+
+### 6.2 CSV reconciliation export
+
+Add `format=csv` to receive a plain-text CSV file suitable for import into Excel or your accounting system:
+
+```
+GET /payments?from=2026-06-01T00:00:00Z&to=2026-06-30T23:59:59Z&format=csv
+```
+
+The response sets `Content-Type: text/csv` and `Content-Disposition: attachment`. Columns:
+
+```
+id, direction, rail, status, amountMinor, currency, sourceReference, description, createdAt
+```
+
+---
+
+## 7. Disbursements (Payouts)
+
+Disbursements — paying a provider, partner, or third party — use the same `POST /payments` endpoint with `direction: CREDIT`. There is no separate disbursement endpoint; the direction field controls the flow of funds.
+
+### 7.1 Initiate a payout
+
+```
+POST /payments
+```
+
+```json
+{
+  "direction": "CREDIT",
+  "rail": "MPESA",
+  "idempotencyKey": "claim-payout-claim-789",
+  "amountMinor": 76000,
+  "currency": "LSL",
+  "payer": { "name": "IthembaHealth Platform" },
+  "payee": { "name": "Dr. Thabo Lerotholi", "phone": "26658123456" },
+  "sourceReference": "claim-789",
+  "description": "Claim payout — consultation 2026-06-25"
+}
+```
+
+**Supported rails for disbursement:**
+
+| Rail | Payee identifier | Notes |
+|---|---|---|
+| `MPESA` | `payee.phone` in `266XXXXXXXX` format | B2C / B2B mobile money transfer |
+| `ECOCASH` | `payee.phone` in `266XXXXXXXX` format | B2C / B2B mobile money transfer |
+| `EFT` | `payee.accountNumber`, `payee.bankCode`, `payee.accountName` | Nedbank CPS batch — not yet production-ready |
+
+**Response:** Same structure as a collection. Status will be `PENDING` → PSP processes → `SUCCEEDED` or `FAILED`. Final status delivered via webhook (`payment.succeeded` / `payment.failed`).
+
+### 7.2 Webhook on disbursement completion
+
+Register a webhook endpoint (Section 11) with the `payment.succeeded` and `payment.failed` events. The payload `data.direction` field will be `CREDIT` so you can distinguish disbursement events from collection events in the same handler:
+
+```json
+{
+  "type": "payment.succeeded",
+  "data": {
+    "direction": "CREDIT",
+    "rail": "MPESA",
+    "amountMinor": 76000,
+    "sourceReference": "claim-789"
+  }
+}
+```
+
+### 7.3 Idempotency for disbursements
+
+Always supply a unique `idempotencyKey` per disbursement (e.g. `claim-payout-{claimId}`). If your server retries after a timeout, the original response is returned — the payout will not be sent twice.
+
+---
+
+## 8. Stored Payment Methods
 
 Stored payment methods allow recurring charges without the customer re-entering details each time.
 

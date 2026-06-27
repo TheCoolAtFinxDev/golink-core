@@ -19,6 +19,7 @@ import { ThreeDsModule } from '../three-ds/three-ds.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { StoredPaymentMethodsModule } from '../stored-payment-methods/stored-payment-methods.module';
+import { PayoutsModule } from '../payouts/payouts.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { StoredPaymentMethodsModule } from '../stored-payment-methods/stored-pay
     WebhooksModule,
     SubscriptionsModule,
     StoredPaymentMethodsModule,
+    PayoutsModule,
   ],
 })
 export class AppModule {}

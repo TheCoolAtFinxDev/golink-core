@@ -236,6 +236,42 @@ export class PaymentsService {
     return updatedInstruction;
   }
 
+  async findAll(
+    merchantId: string,
+    opts: {
+      status?: string;
+      from?: string;
+      to?: string;
+      rail?: string;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ) {
+    const { status, from, to, rail, limit = 50, offset = 0 } = opts;
+    return this.prisma.paymentInstruction.findMany({
+      where: {
+        merchantId,
+        ...(status ? { status: status as never } : {}),
+        ...(rail ? { rail: rail as never } : {}),
+        ...(from || to
+          ? {
+              createdAt: {
+                ...(from ? { gte: new Date(from) } : {}),
+                ...(to ? { lte: new Date(to) } : {}),
+              },
+            }
+          : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 200),
+      skip: offset,
+      include: {
+        executions: { orderBy: { attempt: 'desc' }, take: 1 },
+        splits: true,
+      },
+    });
+  }
+
   async findOne(id: string, merchantId: string) {
     const instruction = await this.prisma.paymentInstruction.findFirst({
       where: { id, merchantId },
@@ -260,11 +296,28 @@ export class PaymentsService {
     return instruction;
   }
 
-  async findAllAdmin(merchantId?: string) {
+  async findAllAdmin(opts: {
+    merchantId?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    rail?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    const { merchantId, status, from, to, rail, limit = 100, offset = 0 } = opts;
     return this.prisma.paymentInstruction.findMany({
-      where: merchantId ? { merchantId } : undefined,
+      where: {
+        ...(merchantId ? { merchantId } : {}),
+        ...(status ? { status: status as never } : {}),
+        ...(rail ? { rail: rail as never } : {}),
+        ...(from || to
+          ? { createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+          : {}),
+      },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: Math.min(limit, 500),
+      skip: offset,
       include: { executions: { orderBy: { attempt: 'desc' }, take: 1 } },
     });
   }

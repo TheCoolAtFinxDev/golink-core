@@ -238,10 +238,11 @@ model StoredPaymentMethod {
   bankCode         String?
   accountName      String?
   // Soft reference to Collect's customer
-  customerId       String?
-  isActive         Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  customerId          String?
+  isActive            Boolean           @default(true)
+  isSettlementAccount Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 
   merchant            Merchant             @relation(fields: [merchantId], references: [id])
   paymentInstructions PaymentInstruction[]

@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -56,6 +57,18 @@ Card tokens are registered automatically during the 3DS card enrollment flow —
   @ApiOperation({ summary: 'Get a stored payment method' })
   findOne(@Param('id') id: string, @ApiClient() client: ApiClientContext) {
     return this.service.findOne(id, client.merchantId);
+  }
+
+  @Patch(':id/settlement-account')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Set as settlement account',
+    description: `Marks this stored payment method as the merchant's default settlement account — the destination for payout run disbursements.
+
+Only one settlement account is active per merchant at a time. Calling this on a new SPM automatically clears the previous one. Card tokens cannot be used as settlement accounts.`,
+  })
+  setSettlementAccount(@Param('id') id: string, @ApiClient() client: ApiClientContext) {
+    return this.service.setSettlementAccount(id, client.merchantId);
   }
 
   @Delete(':id')

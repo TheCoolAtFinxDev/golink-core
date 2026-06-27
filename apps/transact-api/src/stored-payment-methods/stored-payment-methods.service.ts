@@ -78,4 +78,26 @@ export class StoredPaymentMethodsService {
       select: { id: true, kind: true, isActive: true, updatedAt: true },
     });
   }
+
+  async setSettlementAccount(id: string, merchantId: string) {
+    const spm = await this.prisma.storedPaymentMethod.findFirst({
+      where: { id, merchantId, isActive: true },
+    });
+    if (!spm) throw new NotFoundException(`StoredPaymentMethod ${id} not found`);
+    if (spm.kind === 'CARD') {
+      throw new UnprocessableEntityException('Card tokens cannot be used as settlement accounts — use a mobile wallet or bank account');
+    }
+
+    // Clear any existing settlement account for this merchant first
+    await this.prisma.storedPaymentMethod.updateMany({
+      where: { merchantId, isSettlementAccount: true },
+      data: { isSettlementAccount: false },
+    });
+
+    return this.prisma.storedPaymentMethod.update({
+      where: { id },
+      data: { isSettlementAccount: true },
+      select: { id: true, kind: true, mobileNumber: true, walletRail: true, isSettlementAccount: true, updatedAt: true },
+    });
+  }
 }
