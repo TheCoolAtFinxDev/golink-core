@@ -1,0 +1,37 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/transact-api-e2e"
+    },
+    {
+      "path": "./apps/transact-api"
+    },
+    {
+      "path": "./apps/collect-api-e2e"
+    },
+    {
+      "path": "./apps/collect-api"
+    },
+    {
+      "path": "./apps/transact-portal-e2e"
+    },
+    {
+      "path": "./apps/collect-portal-e2e"
+    },
+    {
+      "path": "./libs/domain-events"
+    },
+    {
+      "path": "./libs/transact-client"
+    },
+    {
+      "path": "./apps/transact-portal"
+    },
+    {
+      "path": "./apps/collect-portal"
+    }
+  ]
+}

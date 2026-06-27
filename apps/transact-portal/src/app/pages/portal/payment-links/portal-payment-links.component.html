@@ -1,0 +1,227 @@
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+      <h4 class="mb-1">Payment Links</h4>
+      <p class="text-muted mb-0">Generate shareable payment links. Send via SMS, email, or WhatsApp — payer selects method and pays.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+      <button class="btn btn-primary btn-sm" (click)="showCreateForm = !showCreateForm">
+        <i class="ri-add-line align-bottom me-1"></i>{{ showCreateForm ? 'Cancel' : 'New Link' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error" (click)="error = ''">{{ error }}</div>
+  <div class="alert alert-success" *ngIf="successMessage" (click)="successMessage = ''">{{ successMessage }}</div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="text-muted text-uppercase fs-12 fw-semibold mb-2">Total Links</div>
+          <div class="stat-value">{{ links.length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Active</div>
+            <span class="badge bg-success-subtle text-success">ACTIVE</span>
+          </div>
+          <div class="stat-value">{{ activeCount }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Exhausted</div>
+            <span class="badge bg-info-subtle text-info">EXHAUSTED</span>
+          </div>
+          <div class="stat-value">{{ exhaustedCount }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Form -->
+  <div class="card list-card mb-4" *ngIf="showCreateForm">
+    <div class="card-header border-0">
+      <h5 class="card-title mb-0">Create Payment Link</h5>
+    </div>
+    <div class="card-body">
+      <form [formGroup]="form" (ngSubmit)="createLink()" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Merchant ID <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" formControlName="merchantId" placeholder="Merchant UUID"
+            [class.is-invalid]="form.get('merchantId')?.invalid && form.get('merchantId')?.touched" />
+          <div class="invalid-feedback">Merchant ID is required</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Link Title <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" formControlName="title" placeholder="e.g. School Fees Q1 2026"
+            [class.is-invalid]="form.get('title')?.invalid && form.get('title')?.touched" />
+          <div class="invalid-feedback">Title is required (min 3 chars)</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" formControlName="description" rows="2" placeholder="What is this payment for?"></textarea>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Amount Type</label>
+          <select class="form-select" formControlName="amountType">
+            <option value="fixed">Fixed amount</option>
+            <option value="open">Payer enters amount</option>
+          </select>
+        </div>
+        <div class="col-md-4" *ngIf="!isOpenAmount">
+          <label class="form-label">Amount (minor units)</label>
+          <input type="number" class="form-control" formControlName="amountMinor" placeholder="e.g. 50000 = 500.00" />
+          <div class="form-text">Leave blank for any amount</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Currency <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" formControlName="currency" placeholder="ZWG" maxlength="3" />
+        </div>
+
+        <div class="col-12">
+          <label class="form-label">Allowed Payment Methods</label>
+          <div class="d-flex flex-wrap gap-2">
+            <button *ngFor="let rail of railOptions" type="button" class="btn btn-sm"
+              [class.btn-primary]="isRailSelected(rail)"
+              [class.btn-outline-secondary]="!isRailSelected(rail)"
+              (click)="toggleRail(rail)">
+              {{ rail }}
+            </button>
+          </div>
+          <div class="form-text">Leave all unselected to allow any method</div>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Expires At</label>
+          <input type="datetime-local" class="form-control" formControlName="expiresAt" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Max Uses</label>
+          <input type="number" class="form-control" formControlName="maxUses" placeholder="Unlimited" min="1" />
+        </div>
+
+        <div class="col-12"><div class="border-top pt-2"><strong class="small">Recipient (for notifications)</strong></div></div>
+        <div class="col-md-4">
+          <label class="form-label">Recipient Name</label>
+          <input type="text" class="form-control" formControlName="recipientName" placeholder="Name" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Phone</label>
+          <input type="text" class="form-control" formControlName="recipientPhone" placeholder="+263..." />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-control" formControlName="recipientEmail" placeholder="email@..." />
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary" [disabled]="saving">
+            <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
+            <i class="ri-links-line align-bottom me-1" *ngIf="!saving"></i>Generate Link
+          </button>
+          <button type="button" class="btn btn-light" (click)="showCreateForm = false">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Links List -->
+  <div class="card list-card">
+    <div class="card-body">
+      <div class="text-muted mb-3" *ngIf="loading">Loading payment links...</div>
+
+      <div class="table-responsive" *ngIf="!loading">
+        <table class="table table-nowrap align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Link</th>
+              <th>Amount</th>
+              <th>Rails</th>
+              <th>Uses</th>
+              <th>Status</th>
+              <th>Expires</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let link of links">
+              <td>
+                <div class="fw-semibold">{{ link.title }}</div>
+                <div class="text-muted small d-flex align-items-center gap-1">
+                  <span class="font-monospace">/pay/{{ link.shortCode }}</span>
+                  <button class="btn btn-link btn-sm py-0 px-1" (click)="copyLink(link.shortCode)" title="Copy link">
+                    <i class="ri-file-copy-line"></i>
+                  </button>
+                </div>
+                <div class="text-muted small" *ngIf="link.recipientName">{{ link.recipientName }}</div>
+              </td>
+              <td>
+                <span *ngIf="link.amountMinor">{{ link.amountMinor / 100 | number:'1.2-2' }} {{ link.currency }}</span>
+                <span *ngIf="!link.amountMinor" class="text-muted small">Open</span>
+              </td>
+              <td>
+                <span *ngFor="let rail of link.allowedRails" class="badge bg-secondary-subtle text-secondary me-1">{{ rail }}</span>
+                <span *ngIf="!link.allowedRails?.length" class="text-muted small">Any</span>
+              </td>
+              <td>
+                {{ link.useCount }}
+                <span *ngIf="link.maxUses"> / {{ link.maxUses }}</span>
+              </td>
+              <td><span class="badge rounded-pill" [ngClass]="statusBadge(link.status)">{{ link.status }}</span></td>
+              <td>
+                <span *ngIf="link.expiresAt" class="text-muted small">{{ link.expiresAt | date:'dd MMM yyyy' }}</span>
+                <span *ngIf="!link.expiresAt" class="text-muted small">No expiry</span>
+              </td>
+              <td class="text-end">
+                <div class="d-flex justify-content-end gap-1">
+                  <ng-container *ngIf="link.status === 'ACTIVE'">
+                    <button class="btn btn-sm btn-soft-primary" (click)="startNotify(link)" title="Send notification">
+                      <i class="ri-notification-3-line align-bottom me-1"></i>Notify
+                    </button>
+                    <button class="btn btn-sm btn-soft-danger" (click)="cancelLink(link)">
+                      <i class="ri-close-line align-bottom"></i>
+                    </button>
+                  </ng-container>
+                </div>
+
+                <!-- Inline notify picker -->
+                <div *ngIf="notifyingId === link.id" class="mt-2 p-2 border rounded bg-light text-start">
+                  <div class="small fw-semibold mb-2">Send via:</div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" [(ngModel)]="notifyChannels['sms']" id="sms-{{link.id}}" />
+                    <label class="form-check-label" [for]="'sms-' + link.id">SMS</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" [(ngModel)]="notifyChannels['email']" id="email-{{link.id}}" />
+                    <label class="form-check-label" [for]="'email-' + link.id">Email</label>
+                  </div>
+                  <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" [(ngModel)]="notifyChannels['whatsapp']" id="wa-{{link.id}}" />
+                    <label class="form-check-label" [for]="'wa-' + link.id">WhatsApp</label>
+                  </div>
+                  <div class="d-flex gap-2 mt-2">
+                    <button class="btn btn-xs btn-primary" (click)="sendNotification(link)">Send</button>
+                    <button class="btn btn-xs btn-light" (click)="notifyingId = null">Cancel</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!links.length && !loading">
+              <td colspan="7" class="text-center text-muted py-4">No payment links yet. Create one to get started.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

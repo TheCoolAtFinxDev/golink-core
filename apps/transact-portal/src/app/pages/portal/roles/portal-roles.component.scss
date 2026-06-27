@@ -1,0 +1,13 @@
+.stat-card,
+.list-card {
+  border: 0;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.biller-row { cursor: pointer; }

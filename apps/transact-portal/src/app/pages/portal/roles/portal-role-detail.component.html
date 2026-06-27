@@ -1,0 +1,121 @@
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col-lg-8">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <button type="button" class="btn btn-light btn-sm" (click)="back()">
+          <i class="ri-arrow-left-line align-bottom me-1"></i> Back
+        </button>
+        <div class="record-avatar">
+          <i class="ri-shield-line"></i>
+        </div>
+        <div>
+          <div class="text-muted text-uppercase fs-12 fw-semibold">Role</div>
+          <h4 class="mb-0">{{ pageTitle }}</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div *ngIf="!loading">
+    <div *ngIf="error" class="alert alert-danger" (click)="error = ''">{{ error }}</div>
+    <div *ngIf="successMessage" class="alert alert-success" (click)="successMessage = ''">{{ successMessage }}</div>
+
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="card record-shell">
+          <div class="card-header">
+            <h5 class="card-title mb-1">Role Details</h5>
+            <p class="text-muted mb-0">Name and description for this role.</p>
+          </div>
+          <div class="card-body">
+            <form [formGroup]="roleForm" (ngSubmit)="saveRole()" class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Name <span class="text-danger">*</span></label>
+                <input
+                  type="text"
+                  class="form-control"
+                  formControlName="name"
+                  placeholder="e.g. COMPLIANCE_OFFICER"
+                  [class.is-invalid]="roleForm.get('name')?.invalid && roleForm.get('name')?.touched"
+                />
+                <div class="invalid-feedback">Name is required (min 2 chars)</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" formControlName="description" rows="3" placeholder="Describe what this role can do"></textarea>
+              </div>
+              <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary" [disabled]="saving || roleForm.invalid">
+                  <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
+                  {{ isCreateMode ? 'Create Role' : 'Save Changes' }}
+                </button>
+                <button type="button" class="btn btn-light" (click)="back()">Cancel</button>
+              </div>
+            </form>
+
+            <div *ngIf="role?.isBuiltIn" class="alert alert-info mt-3 mb-0 small">
+              <i class="ri-information-line me-1"></i>
+              Built-in roles cannot be renamed, but you can adjust permissions and 4-eyes flags.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8" *ngIf="!isCreateMode">
+        <div class="card record-shell">
+          <div class="card-header">
+            <h5 class="card-title mb-1">Permissions</h5>
+            <p class="text-muted mb-0">
+              Enable permissions for this role. Toggle <span class="badge bg-warning-subtle text-warning">4-eyes</span>
+              on sensitive operations to require a second approver.
+            </p>
+          </div>
+          <div class="card-body">
+            <div *ngFor="let group of permissionsByCategory()" class="mb-4">
+              <div class="text-uppercase text-muted fw-semibold fs-11 mb-2 border-bottom pb-1">{{ group.category }}</div>
+              <div class="row g-2">
+                <div *ngFor="let perm of group.permissions" class="col-12">
+                  <div
+                    class="d-flex align-items-center justify-content-between p-2 rounded"
+                    [class.bg-primary-subtle]="hasPermission(perm.id)"
+                  >
+                    <div class="form-check mb-0 flex-grow-1">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        [id]="'perm-' + perm.id"
+                        [checked]="hasPermission(perm.id)"
+                        (change)="togglePermission(perm.id)"
+                      />
+                      <label class="form-check-label" [for]="'perm-' + perm.id">
+                        <span class="fw-medium">{{ perm.name }}</span>
+                        <span class="text-muted small d-block">{{ perm.description }}</span>
+                      </label>
+                    </div>
+                    <div *ngIf="hasPermission(perm.id)" class="ms-3">
+                      <button
+                        type="button"
+                        class="btn btn-sm"
+                        [class.btn-warning]="is4Eyes(perm.id)"
+                        [class.btn-outline-secondary]="!is4Eyes(perm.id)"
+                        (click)="toggle4Eyes(perm.id)"
+                        title="Toggle 4-eyes approval requirement"
+                      >
+                        <i class="ri-eye-2-line me-1"></i>
+                        {{ is4Eyes(perm.id) ? '4-eyes ON' : '4-eyes' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

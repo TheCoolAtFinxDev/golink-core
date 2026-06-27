@@ -1,0 +1,210 @@
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+      <h4 class="mb-1">Payments</h4>
+      <p class="text-muted mb-0">Payment instructions processed through the transact gateway.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+      <button class="btn btn-primary btn-sm" [routerLink]="['/portal/payments/new']">
+        <i class="ri-add-line align-bottom me-1"></i> Create Payment
+      </button>
+    </div>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Succeeded</div>
+            <span class="badge bg-success-subtle text-success">SUCCEEDED</span>
+          </div>
+          <div class="stat-value">{{ succeededCount }}</div>
+          <div class="text-muted small">{{ succeededVolume | number:'1.2-2' }} {{ displayCurrency }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Pending</div>
+            <span class="badge bg-warning-subtle text-warning">IN PROGRESS</span>
+          </div>
+          <div class="stat-value">{{ pendingCount }}</div>
+          <div class="text-muted small">Awaiting or processing</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Failed</div>
+            <span class="badge bg-danger-subtle text-danger">FAILED</span>
+          </div>
+          <div class="stat-value">{{ failedCount }}</div>
+          <div class="text-muted small">Payments that did not complete</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Total Loaded</div>
+          </div>
+          <div class="stat-value">{{ allPayments.length }}</div>
+          <div class="text-muted small">Recent 100 instructions</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card list-card">
+    <div class="card-header border-0 pb-0">
+      <div class="filter-shell">
+        <div class="row g-3 align-items-end">
+          <div class="col-xl-4 col-lg-5">
+            <label class="form-label">Search</label>
+            <div class="search-field">
+              <i class="ri-search-line search-field-icon"></i>
+              <input
+                type="text"
+                class="form-control"
+                [(ngModel)]="search"
+                [ngModelOptions]="{ standalone: true }"
+                (keyup.enter)="applyFilters()"
+                placeholder="ID, reference, payer, merchant..."
+              />
+            </div>
+          </div>
+          <div class="col-xl-2 col-md-4">
+            <label class="form-label">Status</label>
+            <select class="form-select" [(ngModel)]="localStatusFilter" [ngModelOptions]="{ standalone: true }">
+              <option value="all">All statuses</option>
+              <option value="SUCCEEDED">Succeeded</option>
+              <option value="PENDING">Pending</option>
+              <option value="PROCESSING">Processing</option>
+              <option value="FAILED">Failed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+          <div class="col-xl-2 col-md-4">
+            <label class="form-label">Rail</label>
+            <select class="form-select" [(ngModel)]="localRailFilter" [ngModelOptions]="{ standalone: true }">
+              <option value="all">All rails</option>
+              <option value="CARD">Card</option>
+              <option value="MPESA">M-PESA</option>
+              <option value="ECOCASH">EcoCash</option>
+              <option value="EFT">EFT</option>
+            </select>
+          </div>
+          <div class="col-xl-3 col-md-4 d-flex gap-2">
+            <button type="button" class="btn btn-primary w-100" (click)="applyFilters()">Apply</button>
+            <button type="button" class="btn btn-light w-100" (click)="clearFilters()">Reset</button>
+          </div>
+        </div>
+
+        <div class="filter-meta mt-3">
+          <span class="filter-chip">Loaded: {{ allPayments.length }}</span>
+          <span class="filter-chip">Visible: {{ total }}</span>
+          <span class="filter-chip" *ngIf="localStatusFilter !== 'all'">Status: {{ localStatusFilter }}</span>
+          <span class="filter-chip" *ngIf="localRailFilter !== 'all'">Rail: {{ localRailFilter }}</span>
+          <span class="filter-chip filter-chip-action" *ngIf="hasSelection">Selected: {{ selectedPaymentIds.length }}</span>
+        </div>
+
+        <div class="bulk-actions mt-3" *ngIf="hasSelection">
+          <button type="button" class="btn btn-sm btn-soft-secondary" (click)="exportSelectedPayments()">
+            <i class="ri-download-2-line align-bottom me-1"></i> Export CSV
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="text-muted mb-3" *ngIf="loading">Loading payments...</div>
+
+      <div class="table-responsive" *ngIf="!loading">
+        <table class="table table-nowrap align-middle mb-0">
+          <thead>
+            <tr>
+              <th class="selection-col">
+                <input type="checkbox" class="form-check-input" [checked]="allVisibleSelected" (click)="toggleSelectAllVisible($event)" />
+              </th>
+              <th style="cursor:pointer" (click)="sortBy('id')">
+                Reference <i class="ms-1 small" [ngClass]="getSortIcon('id')"></i>
+              </th>
+              <th>Rail</th>
+              <th>Payer</th>
+              <th style="cursor:pointer" (click)="sortBy('amount')">
+                Amount <i class="ms-1 small" [ngClass]="getSortIcon('amount')"></i>
+              </th>
+              <th style="cursor:pointer" (click)="sortBy('status')">
+                Status <i class="ms-1 small" [ngClass]="getSortIcon('status')"></i>
+              </th>
+              <th style="cursor:pointer" (click)="sortBy('createdAt')">
+                Created <i class="ms-1 small" [ngClass]="getSortIcon('createdAt')"></i>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let payment of payments" class="biller-row" (click)="openPayment(payment)">
+              <td class="selection-col">
+                <input type="checkbox" class="form-check-input" [checked]="selectedPaymentIds.includes(payment.id)" (click)="toggleSelection(payment.id, $event)" />
+              </td>
+              <td>
+                <div class="fw-semibold font-monospace small">{{ payment.id | slice:0:12 }}...</div>
+                <div class="text-muted small" *ngIf="payment.sourceReference">Ref: {{ payment.sourceReference }}</div>
+                <div class="text-muted small" *ngIf="payment.description">{{ payment.description }}</div>
+              </td>
+              <td>
+                <span class="badge rounded-pill" [ngClass]="railBadgeClass(payment.rail)">{{ payment.rail }}</span>
+                <div class="text-muted small mt-1">{{ payment.direction }}</div>
+              </td>
+              <td>
+                <div class="fw-medium">{{ payerLabel(payment) }}</div>
+                <div class="text-muted small">{{ payment.merchantId | slice:0:8 }}...</div>
+              </td>
+              <td class="fw-semibold">{{ payment.amount | number:'1.2-2' }} {{ payment.currency }}</td>
+              <td>
+                <span class="badge" [ngClass]="statusBadgeClass(payment.status)">{{ payment.status }}</span>
+              </td>
+              <td>{{ payment.createdAt | date:'dd MMM HH:mm' }}</td>
+            </tr>
+            <tr *ngIf="!payments.length && !loading">
+              <td colspan="7" class="text-center text-muted py-4">No payments found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card-footer" *ngIf="!loading">
+      <div class="row align-items-center g-3">
+        <div class="col-lg-4">
+          <div class="text-muted">
+            Showing <span class="fw-semibold">{{ pageStart }}</span> to
+            <span class="fw-semibold">{{ pageEnd }}</span> of
+            <span class="fw-semibold">{{ total }}</span>
+          </div>
+        </div>
+        <div class="col-lg-2">
+          <div class="d-flex align-items-center justify-content-lg-center gap-2">
+            <label class="text-muted mb-0 small">Rows</label>
+            <select class="form-select form-select-sm" [(ngModel)]="pageSize" [ngModelOptions]="{ standalone: true }" (ngModelChange)="onPageSizeChange()">
+              <option *ngFor="let option of pageSizeOptions" [ngValue]="option">{{ option }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="d-flex justify-content-lg-end">
+            <ngb-pagination class="pagination-separated mb-0" [collectionSize]="total" [pageSize]="pageSize" [(page)]="currentPage" [maxSize]="5" [ellipses]="true" [boundaryLinks]="true" (pageChange)="onPageChange($event)"></ngb-pagination>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

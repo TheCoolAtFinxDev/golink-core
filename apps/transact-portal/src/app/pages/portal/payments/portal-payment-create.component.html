@@ -1,0 +1,154 @@
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col-lg-8">
+      <div class="d-flex align-items-center gap-3">
+        <button type="button" class="btn btn-light btn-sm" (click)="cancel()">
+          <i class="ri-arrow-left-line align-bottom me-1"></i> Back
+        </button>
+        <div class="record-avatar"><i class="ri-bank-card-line"></i></div>
+        <div>
+          <div class="text-muted text-uppercase fs-12 fw-semibold">Admin</div>
+          <h4 class="mb-0">Create Payment</h4>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error" (click)="error = ''">{{ error }}</div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <div class="card record-shell">
+        <div class="card-header">
+          <h5 class="card-title mb-1">Payment Details</h5>
+          <p class="text-muted mb-0">Initiate a new payment on behalf of a merchant. The payment will be executed immediately.</p>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="form" (ngSubmit)="submit()" class="row g-3">
+
+            <div class="col-12">
+              <label class="form-label">Merchant <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="merchantId" [class.is-invalid]="form.get('merchantId')?.invalid && form.get('merchantId')?.touched">
+                <option value="">{{ merchantsLoading ? 'Loading...' : 'Select merchant' }}</option>
+                <option *ngFor="let m of merchants" [value]="m.id">{{ m.name }} ({{ m.slug }})</option>
+              </select>
+              <div class="invalid-feedback">Merchant is required</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Payment Rail <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="rail" [class.is-invalid]="form.get('rail')?.invalid && form.get('rail')?.touched">
+                <option value="">Select rail</option>
+                <option *ngFor="let r of railOptions" [value]="r.value">{{ r.label }}</option>
+              </select>
+              <div class="invalid-feedback">Rail is required</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Direction</label>
+              <select class="form-select" formControlName="direction">
+                <option value="DEBIT">Debit (collect from payer)</option>
+                <option value="CREDIT">Credit (pay out to payee)</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Amount (minor units) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" formControlName="amountMinor" placeholder="e.g. 50000 = 500.00"
+                [class.is-invalid]="form.get('amountMinor')?.invalid && form.get('amountMinor')?.touched" />
+              <div class="form-text">Enter in minor currency units (cents). 1000 = 10.00</div>
+              <div class="invalid-feedback">Amount must be at least 1</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Currency <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="currency" placeholder="ZWG" maxlength="3" />
+            </div>
+
+            <div class="col-12"><div class="border-top pt-3"><strong>Payer Details</strong></div></div>
+
+            <div class="col-md-6">
+              <label class="form-label">Payer Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="payerName" placeholder="Full name"
+                [class.is-invalid]="form.get('payerName')?.invalid && form.get('payerName')?.touched" />
+              <div class="invalid-feedback">Payer name is required</div>
+            </div>
+
+            <div class="col-md-6" *ngIf="isMobileRail">
+              <label class="form-label">Payer Phone <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="payerPhone"
+                placeholder="e.g. 62227190 or 26662227190"
+                [class.is-invalid]="form.get('payerPhone')?.invalid && form.get('payerPhone')?.touched" />
+              <div class="form-text">Local (8-digit) or international format — country code 266 auto-added</div>
+              <div class="invalid-feedback">Phone number is required for {{ selectedRail }}</div>
+            </div>
+
+            <div class="col-md-6" *ngIf="!isMobileRail && !isCardRail">
+              <label class="form-label">Payer Email</label>
+              <input type="email" class="form-control" formControlName="payerEmail" placeholder="payer@example.com" />
+            </div>
+
+            <ng-container *ngIf="isCardRail">
+              <div class="col-12"><div class="border-top pt-3"><strong>Card Details</strong></div></div>
+              <div class="col-md-8">
+                <label class="form-label">Card Number (PAN) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control font-monospace" formControlName="cardPan"
+                  placeholder="4111 1111 1111 1111" maxlength="19" autocomplete="off"
+                  [class.is-invalid]="form.get('cardPan')?.invalid && form.get('cardPan')?.touched" />
+                <div class="invalid-feedback">Card number is required</div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Expiry (MMYY) <span class="text-danger">*</span></label>
+                <input type="text" class="form-control font-monospace" formControlName="cardExpiry"
+                  placeholder="1226" maxlength="4" autocomplete="off"
+                  [class.is-invalid]="form.get('cardExpiry')?.invalid && form.get('cardExpiry')?.touched" />
+                <div class="invalid-feedback">Expiry is required</div>
+              </div>
+            </ng-container>
+
+            <div class="col-12"><div class="border-top pt-3"><strong>Additional</strong></div></div>
+
+            <div class="col-md-6">
+              <label class="form-label">Payee Name</label>
+              <input type="text" class="form-control" formControlName="payeeName" placeholder="Receiving party name" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Source Reference</label>
+              <input type="text" class="form-control" formControlName="sourceReference" placeholder="Your internal reference" />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <input type="text" class="form-control" formControlName="description" placeholder="Payment description" />
+            </div>
+
+            <div class="col-12 d-flex gap-2 pt-2">
+              <button type="submit" class="btn btn-primary" [disabled]="saving || form.invalid">
+                <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
+                <i class="ri-send-plane-line align-bottom me-1" *ngIf="!saving"></i>
+                Submit Payment
+              </button>
+              <button type="button" class="btn btn-light" (click)="cancel()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="card record-shell">
+        <div class="card-body">
+          <h6 class="fw-semibold mb-3">How it works</h6>
+          <ul class="list-unstyled text-muted small">
+            <li class="mb-2"><i class="ri-check-line text-success me-1"></i> Payment is executed immediately against the selected merchant's PSP configuration</li>
+            <li class="mb-2"><i class="ri-check-line text-success me-1"></i> For M-PESA/EcoCash, a USSD push is sent to the payer's phone</li>
+            <li class="mb-2"><i class="ri-check-line text-success me-1"></i> Card payments require stored card credentials to be on file</li>
+            <li class="mb-2"><i class="ri-information-line text-info me-1"></i> Amount must be in minor currency units (e.g., 10000 = 100.00 LSL)</li>
+            <li class="mb-2"><i class="ri-information-line text-info me-1"></i> A unique idempotency key is auto-generated for this instruction</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

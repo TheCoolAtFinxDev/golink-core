@@ -1,0 +1,228 @@
+.pay-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.pay-container {
+  width: 100%;
+  max-width: 480px;
+}
+
+.pay-card {
+  background: #fff;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+}
+
+.pay-header {
+  text-align: center;
+}
+
+.pay-brand {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #fff;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+}
+
+.pay-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.5rem;
+}
+
+.pay-description { font-size: 0.95rem; }
+
+.pay-amount {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #2563eb;
+  margin-top: 1rem;
+}
+
+.pay-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 1rem;
+}
+
+.rail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.rail-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.2rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+  }
+
+  &.selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+}
+
+.rail-icon {
+  font-size: 1.6rem;
+  color: #2563eb;
+}
+
+.rail-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.pay-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  margin: 0 auto;
+
+  &.pay-icon-success { background: #f0fdf4; color: #16a34a; }
+  &.pay-icon-error { background: #fef2f2; color: #dc2626; }
+}
+
+.pay-result-panel {
+  background: #f8fafc;
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-top: 1.5rem;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+
+  &:last-child { border-bottom: 0; }
+}
+
+.result-label {
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.result-value { font-size: 0.9rem; }
+
+// ── GoLink branding header ──────────────────────────────────────────────────
+
+.gk-brand-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+
+  .pay-brand {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+    margin: 0;
+  }
+}
+
+.gk-wordmark {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.gk-wordmark-accent {
+  color: #2563eb;
+}
+
+// ── Amount hero (success page) ──────────────────────────────────────────────
+
+.gk-amount-hero {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: #16a34a;
+  margin-top: 0.75rem;
+  line-height: 1;
+}
+
+.gk-currency {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-left: 0.25rem;
+  vertical-align: super;
+}
+
+// ── Error detail chip ───────────────────────────────────────────────────────
+
+.gk-detail-chip {
+  display: inline-block;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.75rem;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+// ── Action button group ─────────────────────────────────────────────────────
+
+.gk-actions {
+  display: flex;
+  flex-direction: column;
+}
+
+// ── Footer ──────────────────────────────────────────────────────────────────
+
+.gk-footer {
+  text-align: center;
+  margin-top: 1.25rem;
+  font-size: 0.78rem;
+  color: #94a3b8;
+
+  a {
+    color: #94a3b8;
+    text-decoration: none;
+
+    &:hover { color: #2563eb; }
+  }
+}

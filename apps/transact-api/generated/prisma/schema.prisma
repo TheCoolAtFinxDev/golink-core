@@ -1,0 +1,552 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum MerchantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PspRail {
+  CARD
+  MPESA
+  ECOCASH
+  EFT
+}
+
+enum SourceSystem {
+  GOLINK_COLLECT
+  ODOO_ERP
+  MERCHANT_POS
+  OTHER
+}
+
+enum PaymentDirection {
+  DEBIT
+  CREDIT
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ExecutionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+enum PaymentMethodKind {
+  CARD
+  MOBILE_WALLET
+  BANK_ACCOUNT
+}
+
+enum ThreeDsSessionKind {
+  ADHOC
+  SUBSCRIPTION
+}
+
+enum ThreeDsSessionStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+}
+
+enum SubscriptionInterval {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  CANCELLED
+  EXHAUSTED
+}
+
+enum CpsBatchStatus {
+  DRAFT
+  SUBMITTED
+  ACK
+  NACK
+  PARTIALLY_FAILED
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+enum SplitStatus {
+  PENDING
+  SETTLED
+  FAILED
+}
+
+enum PaymentLinkStatus {
+  ACTIVE
+  EXPIRED
+  EXHAUSTED
+  CANCELLED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Merchant {
+  id        String         @id @default(uuid())
+  name      String
+  slug      String         @unique
+  status    MerchantStatus @default(ACTIVE)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  pspConfigs           MerchantPspConfig[]
+  apiClients           ApiClient[]
+  paymentInstructions  PaymentInstruction[]
+  storedPaymentMethods StoredPaymentMethod[]
+  threeDsSessions      ThreeDsSession[]
+  subscriptions        Subscription[]
+  pspSessionCaches     PspSessionCache[]
+  cpsBatches           CpsBatch[]
+  webhookEndpoints     WebhookEndpoint[]
+  userMemberships      MerchantMembership[]
+  paymentLinks         PaymentLink[]
+  receivedSplits       PaymentSplit[]
+}
+
+model MerchantPspConfig {
+  id         String   @id @default(uuid())
+  merchantId String
+  rail       PspRail
+  isActive   Boolean  @default(true)
+  config     Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  merchant          Merchant           @relation(fields: [merchantId], references: [id])
+  paymentExecutions PaymentExecution[]
+  threeDsSessions   ThreeDsSession[]
+
+  @@unique([merchantId, rail])
+}
+
+model ApiClient {
+  id           String       @id @default(uuid())
+  merchantId   String
+  name         String
+  keyHash      String
+  keyPrefix    String
+  sourceSystem SourceSystem
+  isActive     Boolean      @default(true)
+  lastUsedAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  merchant            Merchant             @relation(fields: [merchantId], references: [id])
+  paymentInstructions PaymentInstruction[]
+  apiLogs             ApiLog[]
+
+  @@index([keyPrefix])
+}
+
+model PaymentInstruction {
+  id                    String           @id @default(uuid())
+  merchantId            String
+  apiClientId           String
+  direction             PaymentDirection
+  rail                  PspRail
+  sourceSystem          SourceSystem
+  sourceReference       String?
+  idempotencyKey        String           @unique
+  payer                 Json
+  payee                 Json
+  amount                Decimal          @db.Decimal(20, 4)
+  currency              String           @db.Char(3)
+  description           String?
+  metadata              Json?
+  status                PaymentStatus    @default(PENDING)
+  storedPaymentMethodId String?
+  subscriptionId        String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  merchant            Merchant             @relation(fields: [merchantId], references: [id])
+  apiClient           ApiClient            @relation(fields: [apiClientId], references: [id])
+  storedPaymentMethod StoredPaymentMethod? @relation(fields: [storedPaymentMethodId], references: [id])
+  subscription        Subscription?        @relation(fields: [subscriptionId], references: [id])
+  executions          PaymentExecution[]
+  cpsUnpaids          CpsUnpaid[]
+  webhookEvents       WebhookEvent[]
+  splits              PaymentSplit[]       @relation("SplitSource")
+  splitCredit         PaymentSplit?        @relation("SplitCredit")
+
+  @@index([merchantId, status])
+  @@index([merchantId, sourceSystem, sourceReference])
+}
+
+model PaymentExecution {
+  id                   String          @id @default(uuid())
+  paymentInstructionId String
+  attempt              Int
+  pspRail              PspRail
+  pspMerchantConfigId  String
+  pspReference         String?
+  requestPayload       Json
+  responsePayload      Json?
+  status               ExecutionStatus @default(PENDING)
+  cpsBatchId           String?
+  executedAt           DateTime        @default(now())
+  completedAt          DateTime?
+
+  paymentInstruction PaymentInstruction @relation(fields: [paymentInstructionId], references: [id])
+  pspMerchantConfig  MerchantPspConfig  @relation(fields: [pspMerchantConfigId], references: [id])
+  cpsBatch           CpsBatch?          @relation(fields: [cpsBatchId], references: [id])
+
+  @@unique([paymentInstructionId, attempt])
+}
+
+model StoredPaymentMethod {
+  id               String            @id @default(uuid())
+  merchantId       String
+  kind             PaymentMethodKind
+  // Card (iVeri MIT token)
+  transactionIndex String?           @unique
+  maskedPan        String?
+  expiryMMYY       String?
+  scheme           String?
+  // Mobile wallet
+  mobileNumber     String?
+  walletRail       PspRail?
+  // Bank account
+  accountNumber    String?
+  bankCode         String?
+  accountName      String?
+  // Soft reference to Collect's customer
+  customerId       String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  merchant            Merchant             @relation(fields: [merchantId], references: [id])
+  paymentInstructions PaymentInstruction[]
+  threeDsSessions     ThreeDsSession[]
+  subscriptions       Subscription[]
+}
+
+model ThreeDsSession {
+  id                    String               @id @default(uuid())
+  sessionToken          String               @unique @default(uuid())
+  merchantId            String
+  merchantPspConfigId   String
+  kind                  ThreeDsSessionKind
+  // Stored AES-256 encrypted by application layer
+  pan                   String
+  expiryMMYY            String
+  amount                Decimal              @db.Decimal(20, 4)
+  currency              String               @db.Char(3)
+  merchantReference     String
+  customerId            String?
+  billId                String?
+  subscriptionId        String?
+  storedPaymentMethodId String?
+  status                ThreeDsSessionStatus @default(PENDING)
+  expiresAt             DateTime
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  merchant            Merchant             @relation(fields: [merchantId], references: [id])
+  merchantPspConfig   MerchantPspConfig    @relation(fields: [merchantPspConfigId], references: [id])
+  storedPaymentMethod StoredPaymentMethod? @relation(fields: [storedPaymentMethodId], references: [id])
+  subscription        Subscription?        @relation(fields: [subscriptionId], references: [id])
+
+  @@index([status, expiresAt])
+}
+
+model Subscription {
+  id                    String               @id @default(uuid())
+  merchantId            String
+  storedPaymentMethodId String
+  rail                  PspRail
+  customerId            String?
+  billId                String?
+  amount                Decimal              @db.Decimal(20, 4)
+  currency              String               @db.Char(3)
+  interval              SubscriptionInterval
+  status                SubscriptionStatus   @default(ACTIVE)
+  nextRunAt             DateTime
+  attempt               Int                  @default(0)
+  maxAttempts           Int
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  payer           Json?
+  description     String?
+  sourceReference String?
+  metadata        Json?
+
+  merchant            Merchant             @relation(fields: [merchantId], references: [id])
+  storedPaymentMethod StoredPaymentMethod  @relation(fields: [storedPaymentMethodId], references: [id])
+  paymentInstructions PaymentInstruction[]
+  threeDsSessions     ThreeDsSession[]
+
+  @@index([status, nextRunAt])
+}
+
+model PspSessionCache {
+  id         String   @id @default(uuid())
+  merchantId String
+  rail       PspRail
+  token      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@unique([merchantId, rail])
+}
+
+model CpsBatch {
+  id             String         @id @default(uuid())
+  merchantId     String
+  sequenceNumber Int
+  fileContent    String         @db.Text
+  status         CpsBatchStatus @default(DRAFT)
+  submittedAt    DateTime?
+  acknowledgedAt DateTime?
+  ackFileContent String?        @db.Text
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  merchant          Merchant           @relation(fields: [merchantId], references: [id])
+  paymentExecutions PaymentExecution[]
+  cpsUnpaids        CpsUnpaid[]
+
+  @@unique([merchantId, sequenceNumber])
+}
+
+model CpsUnpaid {
+  id                   String   @id @default(uuid())
+  cpsBatchId           String
+  paymentInstructionId String
+  reasonCode           String
+  reasonDescription    String
+  unpaidDate           DateTime
+  createdAt            DateTime @default(now())
+
+  cpsBatch           CpsBatch           @relation(fields: [cpsBatchId], references: [id])
+  paymentInstruction PaymentInstruction @relation(fields: [paymentInstructionId], references: [id])
+}
+
+model WebhookEndpoint {
+  id         String   @id @default(uuid())
+  merchantId String
+  url        String
+  secret     String
+  events     String[]
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  merchant      Merchant       @relation(fields: [merchantId], references: [id])
+  webhookEvents WebhookEvent[]
+}
+
+model WebhookEvent {
+  id                   String                @id @default(uuid())
+  endpointId           String
+  paymentInstructionId String
+  eventType            String
+  payload              Json
+  status               WebhookDeliveryStatus @default(PENDING)
+  attempts             Int                   @default(0)
+  lastAttemptAt        DateTime?
+  nextRetryAt          DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  endpoint           WebhookEndpoint    @relation(fields: [endpointId], references: [id])
+  paymentInstruction PaymentInstruction @relation(fields: [paymentInstructionId], references: [id])
+
+  @@index([status, nextRetryAt])
+}
+
+model PaymentSplit {
+  id                   String      @id @default(uuid())
+  paymentInstructionId String
+  merchantId           String
+  amountMinor          Int
+  description          String?
+  status               SplitStatus @default(PENDING)
+  creditInstructionId  String?     @unique
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  paymentInstruction PaymentInstruction  @relation("SplitSource", fields: [paymentInstructionId], references: [id])
+  merchant           Merchant            @relation(fields: [merchantId], references: [id])
+  creditInstruction  PaymentInstruction? @relation("SplitCredit", fields: [creditInstructionId], references: [id])
+
+  @@index([paymentInstructionId, status])
+}
+
+model PaymentLink {
+  id             String            @id @default(uuid())
+  merchantId     String
+  shortCode      String            @unique
+  title          String
+  description    String?
+  amountMinor    Int?
+  currency       String            @db.Char(3)
+  allowedRails   PspRail[]
+  expiresAt      DateTime?
+  maxUses        Int?
+  useCount       Int               @default(0)
+  recipientName  String?
+  recipientPhone String?
+  recipientEmail String?
+  notifiedVia    String[]
+  status         PaymentLinkStatus @default(ACTIVE)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@index([shortCode])
+  @@index([merchantId, status])
+}
+
+model ApiLog {
+  id           String   @id @default(uuid())
+  apiClientId  String?
+  method       String
+  path         String
+  statusCode   Int
+  requestBody  Json?
+  responseBody Json?
+  durationMs   Int
+  createdAt    DateTime @default(now())
+
+  apiClient ApiClient? @relation(fields: [apiClientId], references: [id])
+
+  @@index([createdAt])
+  @@index([apiClientId])
+}
+
+// ─── RBAC ─────────────────────────────────────────────────────────────────────
+
+model SystemUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String?
+  isActive     Boolean  @default(true)
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships        MerchantMembership[]
+  initiatedApprovals ApprovalRequest[]    @relation("Requester")
+  reviewedApprovals  ApprovalRequest[]    @relation("Reviewer")
+}
+
+model SystemRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isBuiltIn   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  memberships      MerchantMembership[]
+  permissionGrants RolePermission[]
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  description String
+  category    String
+  isActive    Boolean @default(true)
+
+  roleGrants RolePermission[]
+}
+
+model RolePermission {
+  id            String  @id @default(cuid())
+  roleId        String
+  permissionId  String
+  requires4Eyes Boolean @default(false)
+
+  role       SystemRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model MerchantMembership {
+  id         String   @id @default(cuid())
+  userId     String
+  merchantId String
+  roleId     String
+  isPrimary  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     SystemUser @relation(fields: [userId], references: [id])
+  merchant Merchant   @relation(fields: [merchantId], references: [id])
+  role     SystemRole @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, merchantId])
+  @@index([userId, isActive])
+}
+
+// ─── 4-Eyes Approvals ─────────────────────────────────────────────────────────
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model ApprovalRequest {
+  id             String         @id @default(cuid())
+  requesterId    String
+  reviewerId     String?
+  action         String
+  resourceType   String
+  resourceId     String?
+  payload        Json
+  requesterNotes String?
+  reviewerNotes  String?
+  status         ApprovalStatus @default(PENDING)
+  expiresAt      DateTime?
+  resolvedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  requester SystemUser  @relation("Requester", fields: [requesterId], references: [id])
+  reviewer  SystemUser? @relation("Reviewer", fields: [reviewerId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([requesterId])
+}

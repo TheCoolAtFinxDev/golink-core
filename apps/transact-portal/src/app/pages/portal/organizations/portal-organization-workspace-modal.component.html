@@ -1,0 +1,990 @@
+<div class="wizard-modal-shell">
+  <div class="modal-header border-0 pb-0 wizard-modal-header">
+    <div>
+      <div class="text-muted text-uppercase fs-12 fw-semibold">{{ organization.type }} Workspace</div>
+      <h4 class="modal-title mb-1">{{ wizardTitle }}</h4>
+      <p class="text-muted mb-0">{{ wizardDescription }}</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 wizard-header-actions">
+      <button type="button" class="btn btn-light" (click)="activeModal.dismiss('cancel')" [disabled]="saving">
+        Close
+      </button>
+      <button type="button" class="btn-close" aria-label="Close" (click)="activeModal.dismiss('cancel')"></button>
+    </div>
+  </div>
+
+  <div class="modal-body pt-3 wizard-modal-body">
+    <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
+    <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+
+    <div class="card border-0 shadow-none mb-0">
+      <div class="card-body form-steps p-0">
+        <div class="wizard-layout">
+          <div class="wizard-step-rail">
+            <div class="steps nav flex-column custom-nav nav-pills wizard-step-nav">
+              <button
+                *ngFor="let step of steps; let i = index"
+                class="nav-link"
+                [ngClass]="{ active: currentStep === i, done: currentStep > i }"
+                type="button"
+                (click)="goToStep(i)"
+              >
+                <span class="step-title me-2">
+                  <i class="ri-close-circle-fill align-bottom step-icon me-2"></i> Step {{ i + 1 }}
+                </span>
+                {{ step }}
+              </button>
+            </div>
+          </div>
+
+          <div class="wizard-main-content">
+            <div class="wizard-stage">
+              <form [formGroup]="billingProfileForm" *ngIf="mode === 'billing' && currentStep === 0">
+                <div class="centered-content">
+                  <div>
+                    <h5>Billing Controls</h5>
+                    <p class="text-muted">Capture readiness, billing status, and settlement communication defaults.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Readiness Status</label>
+                      <select class="form-select" formControlName="readinessStatus">
+                        <option value="DRAFT">DRAFT</option>
+                        <option value="INCOMPLETE">INCOMPLETE</option>
+                        <option value="READY">READY</option>
+                        <option value="LIVE">LIVE</option>
+                        <option value="SUSPENDED">SUSPENDED</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Billing Status</label>
+                      <select class="form-select" formControlName="billingStatus">
+                        <option value="NOT_CONFIGURED">NOT_CONFIGURED</option>
+                        <option value="PENDING">PENDING</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="PAUSED">PAUSED</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Billing Email</label>
+                      <input type="email" class="form-control" formControlName="billingEmail" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Billing Currency</label>
+                      <input type="text" class="form-control text-uppercase" formControlName="billingCurrency" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Internal Notes</label>
+                      <textarea class="form-control" rows="4" formControlName="notes"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="billingProfileForm" *ngIf="mode === 'billing' && currentStep === 1">
+                <div class="centered-content">
+                  <div>
+                    <h5>Lago Connectivity</h5>
+                    <p class="text-muted">Keep billing linkage and subscription identifiers aligned to the partner record.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Lago Customer ID</label>
+                      <input type="text" class="form-control" formControlName="lagoCustomerId" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Lago Subscription ID</label>
+                      <input type="text" class="form-control" formControlName="lagoSubscriptionId" />
+                    </div>
+                    <div class="col-12">
+                      <div class="wizard-note-panel">
+                        Save this wizard to update the organization billing profile. The Billing tab stays table-first while editing happens here.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="billerForm" *ngIf="mode === 'biller' && currentStep === 0">
+                <div class="centered-content">
+                  <div>
+                    <h5>Operating Profile</h5>
+                    <p class="text-muted">Create a linked biller or merchant operating profile under this partner.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Profile Name</label>
+                      <input type="text" class="form-control" formControlName="name" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Profile Code</label>
+                      <input type="text" class="form-control text-uppercase" formControlName="code" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Profile</label>
+                      <input type="text" class="form-control" formControlName="profile" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Type</label>
+                      <input type="text" class="form-control" formControlName="type" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Callback URL</label>
+                      <input type="text" class="form-control" formControlName="callbackUrl" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Default Currency</label>
+                      <input type="text" class="form-control text-uppercase" formControlName="defaultCurrency" />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div *ngIf="mode === 'biller' && currentStep === 1" class="centered-content">
+                <div>
+                  <h5>Review</h5>
+                  <p class="text-muted">Save to add this operating profile and return to the tabular workspace.</p>
+                </div>
+                <div class="table-card">
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <tbody>
+                        <tr><th>Name</th><td>{{ billerForm.value.name || '-' }}</td></tr>
+                        <tr><th>Code</th><td>{{ billerForm.value.code || '-' }}</td></tr>
+                        <tr><th>Type</th><td>{{ billerForm.value.type || '-' }}</td></tr>
+                        <tr><th>Currency</th><td>{{ billerForm.value.defaultCurrency || '-' }}</td></tr>
+                        <tr><th>Callback</th><td>{{ billerForm.value.callbackUrl || '-' }}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <form [formGroup]="memberForm" *ngIf="mode === 'member' && currentStep === 0">
+                <div class="centered-content">
+                  <div>
+                    <h5>Member Identity</h5>
+                    <p class="text-muted">
+                      Add or seed a responsible user for onboarding, operations, or finance.
+                      <span *ngIf="supportsPortalCredentials">Email is used as the PSO login username.</span>
+                    </p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Name</label>
+                      <input type="text" class="form-control" formControlName="name" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Email</label>
+                      <input type="email" class="form-control" formControlName="email" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Role</label>
+                      <select class="form-select" formControlName="role">
+                        <option *ngFor="let role of memberRoleOptions" [value]="role">{{ role }}</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                      <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" formControlName="isPrimary" id="organizationWizardPrimaryMember" />
+                        <label class="form-check-label" for="organizationWizardPrimaryMember">Assign as primary member</label>
+                      </div>
+                    </div>
+                    <div class="col-md-6" *ngIf="supportsPortalCredentials">
+                      <label class="form-label">Portal Password</label>
+                      <input type="password" class="form-control" formControlName="password" placeholder="Minimum 8 characters" />
+                      <div class="form-text">Leave blank if you only want to link the member for now.</div>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div *ngIf="mode === 'member' && currentStep === 1" class="centered-content">
+                <div>
+                  <h5>Review</h5>
+                  <p class="text-muted">Confirm the access assignment before saving.</p>
+                </div>
+                <div class="table-card">
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <tbody>
+                        <tr><th>Name</th><td>{{ memberForm.value.name || '-' }}</td></tr>
+                        <tr><th>Email</th><td>{{ memberForm.value.email || '-' }}</td></tr>
+                        <tr><th>Role</th><td>{{ memberForm.value.role || '-' }}</td></tr>
+                        <tr><th>Primary</th><td>{{ memberForm.value.isPrimary ? 'Yes' : 'No' }}</td></tr>
+                        <tr *ngIf="supportsPortalCredentials"><th>Portal Access</th><td>{{ memberForm.value.password ? 'Password configured' : 'Not configured' }}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <form [formGroup]="complianceProfileForm" *ngIf="mode === 'compliance' && currentStep === 0">
+                <div class="centered-content">
+                  <div>
+                    <h5>Business Identity</h5>
+                    <p class="text-muted">Capture the legal business profile that anchors KYB and underwriting.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Trading Name</label>
+                      <input type="text" class="form-control" formControlName="tradingName" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Registration Number</label>
+                      <input type="text" class="form-control" formControlName="registrationNumber" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Business Type</label>
+                      <select class="form-select" formControlName="businessType">
+                        <option value="">— Select —</option>
+                        <option value="Ltd">Ltd (Private Limited)</option>
+                        <option value="PLC">PLC (Public Limited)</option>
+                        <option value="Partnership">Partnership</option>
+                        <option value="SoleTrader">Sole Trader</option>
+                        <option value="NGO">NGO / Non-profit</option>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Tax ID Number</label>
+                      <input type="text" class="form-control" formControlName="taxIdentificationNumber" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Date of Establishment</label>
+                      <input type="date" class="form-control" formControlName="dateOfEstablishment" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Tax Number</label>
+                      <input type="text" class="form-control" formControlName="taxNumber" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">VAT Number</label>
+                      <input type="text" class="form-control" formControlName="vatNumber" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">License Number</label>
+                      <input type="text" class="form-control" formControlName="businessLicenseNumber" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">License Expiry</label>
+                      <input type="date" class="form-control" formControlName="businessLicenseExpiry" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Industry</label>
+                      <input type="text" class="form-control" formControlName="industryCategory" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Business Model</label>
+                      <input type="text" class="form-control" formControlName="businessModel" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Website URL</label>
+                      <input type="text" class="form-control" formControlName="websiteUrl" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Countries Served</label>
+                      <input type="text" class="form-control" formControlName="countriesServed" placeholder="LS, ZA" />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="complianceProfileForm" *ngIf="mode === 'compliance' && currentStep === 1">
+                <div class="centered-content">
+                  <div>
+                    <h5>Main Representative</h5>
+                    <p class="text-muted">The individual responsible for this application and authorized to act on behalf of the company.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <label class="form-label">First Name</label>
+                      <input type="text" class="form-control" formControlName="mainRepFirstName" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Last Name</label>
+                      <input type="text" class="form-control" formControlName="mainRepLastName" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Job Title</label>
+                      <input type="text" class="form-control" formControlName="mainRepJobTitle" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Email</label>
+                      <input type="email" class="form-control" formControlName="mainRepEmail" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Phone</label>
+                      <input type="text" class="form-control" formControlName="mainRepPhone" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Date of Birth</label>
+                      <input type="date" class="form-control" formControlName="mainRepDateOfBirth" />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="complianceProfileForm" *ngIf="mode === 'compliance' && currentStep === 2">
+                <div class="centered-content">
+                  <div>
+                    <h5>Headquarters</h5>
+                    <p class="text-muted">Registered business address for KYB verification.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Street</label>
+                      <input type="text" class="form-control" formControlName="hqStreet" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label">Street No.</label>
+                      <input type="text" class="form-control" formControlName="hqStreetNumber" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">City</label>
+                      <input type="text" class="form-control" formControlName="hqCity" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Postal Code</label>
+                      <input type="text" class="form-control" formControlName="hqPostalCode" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Country (ISO)</label>
+                      <input type="text" class="form-control text-uppercase" formControlName="hqCountry" maxlength="2" placeholder="LS" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Phone</label>
+                      <input type="text" class="form-control" formControlName="hqPhone" />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="complianceProfileForm" *ngIf="mode === 'compliance' && currentStep === 3">
+                <div class="centered-content">
+                  <div>
+                    <h5>Business Activity</h5>
+                    <p class="text-muted">Describe the business model, industry, and annual processing volumes.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Industry</label>
+                      <input type="text" class="form-control" formControlName="storeIndustry" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Website URL(s)</label>
+                      <input type="text" class="form-control" formControlName="storeWebsiteUrls" placeholder="https://example.com" />
+                    </div>
+                    <div class="col-md-8">
+                      <label class="form-label">Business Models <span class="text-muted">(comma-separated)</span></label>
+                      <input type="text" class="form-control" formControlName="storeBusinessModel" placeholder="Direct Lending, Mobile Money" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Annual Sales Volume</label>
+                      <input type="number" class="form-control" formControlName="storeAnnualSalesVolume" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Other Business Model</label>
+                      <input type="text" class="form-control" formControlName="storeOtherBusinessModel" />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="complianceProfileForm" *ngIf="mode === 'compliance' && currentStep === 4">
+                <div class="centered-content">
+                  <div>
+                    <h5>Banking</h5>
+                    <p class="text-muted">Primary bank account for settlement and KYB verification.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Bank Name</label>
+                      <input type="text" class="form-control" formControlName="bankName" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Account Holder Name</label>
+                      <input type="text" class="form-control" formControlName="bankHolderName" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Account Number</label>
+                      <input type="text" class="form-control" formControlName="bankAccountNumber" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Currency Code</label>
+                      <input type="text" class="form-control text-uppercase" formControlName="bankCurrencyCode" maxlength="3" placeholder="LSL" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Country (ISO)</label>
+                      <input type="text" class="form-control text-uppercase" formControlName="bankCountry" maxlength="2" placeholder="LS" />
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="complianceProfileForm" *ngIf="mode === 'compliance' && currentStep === 5">
+                <div class="centered-content">
+                  <div>
+                    <h5>Contacts & Risk</h5>
+                    <p class="text-muted">Capture commercial, operational, technical, and dispute contacts plus business context.</p>
+                  </div>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Finance Contact Name</label>
+                      <input type="text" class="form-control" formControlName="financeContactName" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Finance Contact Email</label>
+                      <input type="email" class="form-control" formControlName="financeContactEmail" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Operations Contact Name</label>
+                      <input type="text" class="form-control" formControlName="operationsContactName" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Operations Contact Email</label>
+                      <input type="email" class="form-control" formControlName="operationsContactEmail" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Technical Contact Name</label>
+                      <input type="text" class="form-control" formControlName="technicalContactName" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Technical Contact Email</label>
+                      <input type="email" class="form-control" formControlName="technicalContactEmail" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Dispute Contact Name</label>
+                      <input type="text" class="form-control" formControlName="disputeContactName" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Dispute Contact Email</label>
+                      <input type="email" class="form-control" formControlName="disputeContactEmail" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Expected Monthly Volume</label>
+                      <input type="number" class="form-control" formControlName="expectedMonthlyVolumeCents" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Average Ticket Size</label>
+                      <input type="number" class="form-control" formControlName="averageTicketSizeCents" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Settlement Cycle</label>
+                      <input type="text" class="form-control" formControlName="settlementCycle" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Technical Integration</label>
+                      <input type="text" class="form-control" formControlName="technicalIntegrationMethod" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Refund Policy URL</label>
+                      <input type="text" class="form-control" formControlName="refundPolicyUrl" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Source of Business</label>
+                      <textarea class="form-control" rows="3" formControlName="sourceOfBusiness"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Source of Funds</label>
+                      <textarea class="form-control" rows="3" formControlName="sourceOfFunds"></textarea>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Chargeback Process</label>
+                      <textarea class="form-control" rows="3" formControlName="chargebackProcessNote"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div *ngIf="mode === 'compliance' && currentStep === 6" class="centered-content">
+                <div>
+                  <h5>Ownership</h5>
+                  <p class="text-muted">Declare ownership structure and beneficial owners (≥25% ownership or control).</p>
+                </div>
+                <div [formGroup]="complianceProfileForm" class="row g-3 mb-4">
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" formControlName="iHaveSigningAuthority" id="iHaveSigningAuthority" />
+                      <label class="form-check-label" for="iHaveSigningAuthority">I have signing authority for this company</label>
+                    </div>
+                  </div>
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" formControlName="thereNoCompaniesWithMoreThan25" id="thereNoCompaniesWithMoreThan25" />
+                      <label class="form-check-label" for="thereNoCompaniesWithMoreThan25">There are no companies with more than 25% ownership in this business</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <form [formGroup]="beneficialOwnerForm" *ngIf="mode === 'compliance' && currentStep === 6">
+                <div class="centered-content">
+                  <div>
+                    <h5>Beneficial Owners</h5>
+                    <p class="text-muted">Capture one beneficial owner at a time, then manage the saved records below.</p>
+                  </div>
+                  <div class="record-editor-card">
+                    <div class="record-editor-header">
+                      <div>
+                        <div class="fw-semibold">{{ editingBeneficialOwnerIndex === null ? 'New owner' : 'Edit owner' }}</div>
+                        <div class="text-muted small">Use one form at the top, then save the record into the list below.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-light" (click)="cancelBeneficialOwnerEdit()">Clear</button>
+                        <button type="button" class="btn btn-sm btn-primary" (click)="saveBeneficialOwnerDraft()">
+                          {{ editingBeneficialOwnerIndex === null ? 'Add owner' : 'Update owner' }}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label class="form-label">First Name</label>
+                        <input type="text" class="form-control" formControlName="firstName" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" class="form-control" formControlName="lastName" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Role / Title</label>
+                        <input type="text" class="form-control" formControlName="role" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" class="form-control" formControlName="dateOfBirth" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Ownership %</label>
+                        <input type="number" class="form-control" formControlName="ownershipPercent" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-control" formControlName="phoneNumber" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" formControlName="email" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">National ID</label>
+                        <input type="text" class="form-control" formControlName="nationalIdNumber" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Passport</label>
+                        <input type="text" class="form-control" formControlName="passportNumber" />
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Residential Address JSON</label>
+                        <textarea class="form-control" rows="3" formControlName="residentialAddress"></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="table-card">
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Beneficial Owner</th>
+                            <th>Ownership %</th>
+                            <th>Email</th>
+                            <th class="text-end action-column">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let owner of beneficialOwnersDraft; let i = index">
+                            <td>{{ owner.firstName }} {{ owner.lastName }}</td>
+                            <td>{{ owner.ownershipPercent ?? '-' }}</td>
+                            <td>{{ owner.email || '-' }}</td>
+                            <td class="text-end">
+                              <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-light" (click)="editBeneficialOwner(i)">Edit</button>
+                                <button type="button" class="btn btn-light text-danger" (click)="removeBeneficialOwner(i)">Remove</button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr *ngIf="!beneficialOwnersDraft.length">
+                            <td colspan="4" class="text-center text-muted py-4">No beneficial owners recorded yet.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="associatedCompanyForm" *ngIf="mode === 'compliance' && currentStep === 7">
+                <div class="centered-content">
+                  <div>
+                    <h5>Associated Companies</h5>
+                    <p class="text-muted">Declare subsidiaries, parent companies, or other related entities.</p>
+                  </div>
+                  <div class="record-editor-card">
+                    <div class="record-editor-header">
+                      <div>
+                        <div class="fw-semibold">{{ editingAssociatedCompanyIndex === null ? 'New company' : 'Edit company' }}</div>
+                        <div class="text-muted small">Add one company at a time into the list below.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-light" (click)="cancelAssociatedCompanyEdit()">Clear</button>
+                        <button type="button" class="btn btn-sm btn-primary" (click)="saveAssociatedCompanyDraft()">
+                          {{ editingAssociatedCompanyIndex === null ? 'Add company' : 'Update company' }}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label">Company Name</label>
+                        <input type="text" class="form-control" formControlName="companyName" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Registration No.</label>
+                        <input type="text" class="form-control" formControlName="registrationNumber" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Country (ISO)</label>
+                        <input type="text" class="form-control text-uppercase" formControlName="country" maxlength="2" placeholder="LS" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Relationship</label>
+                        <input type="text" class="form-control" formControlName="associationRelationship" placeholder="Subsidiary, Parent…" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Rep First Name</label>
+                        <input type="text" class="form-control" formControlName="repFirstName" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Rep Last Name</label>
+                        <input type="text" class="form-control" formControlName="repLastName" />
+                      </div>
+                      <div class="col-md-5">
+                        <label class="form-label">Rep Email</label>
+                        <input type="email" class="form-control" formControlName="repEmail" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="table-card">
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Company Name</th>
+                            <th>Reg. No.</th>
+                            <th>Relationship</th>
+                            <th class="text-end action-column">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let company of associatedCompaniesDraft; let i = index">
+                            <td>{{ company.companyName }}</td>
+                            <td>{{ company.registrationNumber || '-' }}</td>
+                            <td>{{ company.associationRelationship || '-' }}</td>
+                            <td class="text-end">
+                              <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-light" (click)="editAssociatedCompany(i)">Edit</button>
+                                <button type="button" class="btn btn-light text-danger" (click)="removeAssociatedCompany(i)">Remove</button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr *ngIf="!associatedCompaniesDraft.length">
+                            <td colspan="4" class="text-center text-muted py-4">No associated companies recorded yet.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="authorizedSignatoryForm" *ngIf="mode === 'compliance' && currentStep === 8">
+                <div class="centered-content">
+                  <div>
+                    <h5>Authorized Signatories</h5>
+                    <p class="text-muted">Edit one signatory at a time and manage the existing signatories in the table below.</p>
+                  </div>
+                  <div class="record-editor-card">
+                    <div class="record-editor-header">
+                      <div>
+                        <div class="fw-semibold">{{ editingAuthorizedSignatoryIndex === null ? 'New signatory' : 'Edit signatory' }}</div>
+                        <div class="text-muted small">Saving here updates the staged signatory list for this wizard.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-light" (click)="cancelAuthorizedSignatoryEdit()">Clear</button>
+                        <button type="button" class="btn btn-sm btn-primary" (click)="saveAuthorizedSignatoryDraft()">
+                          {{ editingAuthorizedSignatoryIndex === null ? 'Add signatory' : 'Update signatory' }}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" formControlName="fullName" />
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label">Role Title</label>
+                        <input type="text" class="form-control" formControlName="roleTitle" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-control" formControlName="phoneNumber" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" formControlName="email" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Proof of Authority URL</label>
+                        <input type="text" class="form-control" formControlName="proofOfAuthorityUrl" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="table-card">
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Authorized Signatory</th>
+                            <th>Role Title</th>
+                            <th>Email</th>
+                            <th class="text-end action-column">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let signatory of authorizedSignatoriesDraft; let i = index">
+                            <td>{{ signatory.fullName }}</td>
+                            <td>{{ signatory.roleTitle || '-' }}</td>
+                            <td>{{ signatory.email || '-' }}</td>
+                            <td class="text-end">
+                              <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-light" (click)="editAuthorizedSignatory(i)">Edit</button>
+                                <button type="button" class="btn btn-light text-danger" (click)="removeAuthorizedSignatory(i)">Remove</button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr *ngIf="!authorizedSignatoriesDraft.length">
+                            <td colspan="4" class="text-center text-muted py-4">No signatories recorded yet.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <form [formGroup]="settlementAccountForm" *ngIf="mode === 'compliance' && currentStep === 9">
+                <div class="centered-content">
+                  <div>
+                    <h5>Settlement Accounts</h5>
+                    <p class="text-muted">Keep a single settlement account form at the top and maintain the account list below.</p>
+                  </div>
+                  <div class="record-editor-card">
+                    <div class="record-editor-header">
+                      <div>
+                        <div class="fw-semibold">{{ editingSettlementAccountIndex === null ? 'New settlement account' : 'Edit settlement account' }}</div>
+                        <div class="text-muted small">Bank, account name, and account number are required before the record can be saved.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-light" (click)="cancelSettlementAccountEdit()">Clear</button>
+                        <button type="button" class="btn btn-sm btn-primary" (click)="saveSettlementAccountDraft()">
+                          {{ editingSettlementAccountIndex === null ? 'Add account' : 'Update account' }}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-md-4">
+                        <label class="form-label">Bank Name</label>
+                        <input type="text" class="form-control" formControlName="bankName" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Account Name</label>
+                        <input type="text" class="form-control" formControlName="accountName" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Account Number</label>
+                        <input type="text" class="form-control" formControlName="accountNumber" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Account Type</label>
+                        <input type="text" class="form-control" formControlName="accountType" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Branch Code</label>
+                        <input type="text" class="form-control" formControlName="branchCode" />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Currency</label>
+                        <input type="text" class="form-control text-uppercase" formControlName="currency" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="table-card">
+                    <div class="table-responsive">
+                      <table class="table table-sm align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Bank</th>
+                            <th>Account Name</th>
+                            <th>Account Number</th>
+                            <th>Currency</th>
+                            <th class="text-end action-column">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr *ngFor="let account of settlementAccountsDraft; let i = index">
+                            <td>{{ account.bankName }}</td>
+                            <td>{{ account.accountName }}</td>
+                            <td>{{ account.accountNumber }}</td>
+                            <td>{{ account.currency || '-' }}</td>
+                            <td class="text-end">
+                              <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-light" (click)="editSettlementAccount(i)">Edit</button>
+                                <button type="button" class="btn btn-light text-danger" (click)="removeSettlementAccount(i)">Remove</button>
+                              </div>
+                            </td>
+                          </tr>
+                          <tr *ngIf="!settlementAccountsDraft.length">
+                            <td colspan="5" class="text-center text-muted py-4">No settlement accounts recorded yet.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div class="d-flex align-items-start gap-3 mt-4 wizard-actions">
+                <button type="button" class="btn btn-light btn-label" (click)="previousStep()" [disabled]="currentStep === 0 || saving">
+                  <i class="ri-arrow-left-line label-icon align-middle fs-16 me-2"></i>Back
+                </button>
+                <button *ngIf="currentStep < steps.length - 1" type="button" class="btn btn-primary btn-label right ms-auto" (click)="nextStep()">
+                  Continue<i class="ri-arrow-right-line label-icon align-middle fs-16 ms-2"></i>
+                </button>
+                <button *ngIf="currentStep === steps.length - 1" type="button" class="btn btn-primary btn-label right ms-auto" [disabled]="saving" (click)="save()">
+                  {{ saving ? 'Saving...' : 'Save & Close' }}<i class="ri-check-line label-icon align-middle fs-16 ms-2"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="wizard-captured-panel mt-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fs-md text-primary mb-0">
+                  <i class="ri-table-line align-middle me-2"></i>Current Records
+                </h5>
+                <span class="badge bg-primary rounded-pill">{{ mode === 'compliance' ? beneficialOwnersDraft.length + associatedCompaniesDraft.length + authorizedSignatoriesDraft.length + settlementAccountsDraft.length : mode === 'member' ? members.length : mode === 'biller' ? billers.length : 1 }}</span>
+              </div>
+
+              <div class="table-card" *ngIf="mode === 'member'">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Primary</th>
+                        <th *ngIf="supportsPortalCredentials">Portal Access</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let member of members">
+                        <td>{{ member.user.name }}</td>
+                        <td>{{ member.user.email }}</td>
+                        <td>{{ member.role }}</td>
+                        <td>{{ member.isPrimary ? 'Yes' : 'No' }}</td>
+                        <td *ngIf="supportsPortalCredentials">{{ member.user.hasPassword ? 'Configured' : 'Not set' }}</td>
+                      </tr>
+                      <tr *ngIf="!members.length">
+                        <td [attr.colspan]="supportsPortalCredentials ? 5 : 4" class="text-center text-muted py-5">No members linked yet.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="table-card" *ngIf="mode === 'biller'">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Currency</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let biller of billers">
+                        <td>{{ biller.code }}</td>
+                        <td>{{ biller.name }}</td>
+                        <td>{{ biller.type || '-' }}</td>
+                        <td>{{ biller.defaultCurrency || '-' }}</td>
+                      </tr>
+                      <tr *ngIf="!billers.length">
+                        <td colspan="4" class="text-center text-muted py-5">No operating profiles linked yet.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="table-card" *ngIf="mode === 'billing'">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                      <tr><th>Readiness</th><td>{{ organization.readinessStatus }}</td></tr>
+                      <tr><th>Billing Status</th><td>{{ organization.billingStatus }}</td></tr>
+                      <tr><th>Billing Email</th><td>{{ organization.billingEmail || organization.contactEmail || '-' }}</td></tr>
+                      <tr><th>Currency</th><td>{{ organization.billingCurrency || '-' }}</td></tr>
+                      <tr><th>Lago Customer</th><td>{{ organization.lagoCustomerId || '-' }}</td></tr>
+                      <tr><th>Lago Subscription</th><td>{{ organization.lagoSubscriptionId || '-' }}</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div *ngIf="mode === 'compliance'" class="vstack gap-3">
+                <div class="wizard-note-panel">
+                  <div class="fw-semibold mb-2">Staged Compliance Summary</div>
+                  <div class="summary-grid">
+                    <div class="summary-item">
+                      <span class="summary-label">Beneficial owners</span>
+                      <strong>{{ beneficialOwnersDraft.length }}</strong>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-label">Associated companies</span>
+                      <strong>{{ associatedCompaniesDraft.length }}</strong>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-label">Authorized signatories</span>
+                      <strong>{{ authorizedSignatoriesDraft.length }}</strong>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-label">Settlement accounts</span>
+                      <strong>{{ settlementAccountsDraft.length }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="table-card">
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <tbody>
+                        <tr><th>Trading Name</th><td>{{ complianceProfileForm.value.tradingName || '-' }}</td></tr>
+                        <tr><th>Registration Number</th><td>{{ complianceProfileForm.value.registrationNumber || '-' }}</td></tr>
+                        <tr><th>Operations Contact</th><td>{{ complianceProfileForm.value.operationsContactName || '-' }}</td></tr>
+                        <tr><th>Operations Email</th><td>{{ complianceProfileForm.value.operationsContactEmail || '-' }}</td></tr>
+                        <tr><th>Countries Served</th><td>{{ complianceProfileForm.value.countriesServed || '-' }}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
