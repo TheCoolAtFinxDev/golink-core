@@ -1,0 +1,130 @@
+.wizard-modal-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f3f6fb;
+}
+
+.wizard-modal-header {
+  padding-bottom: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bs-body-bg);
+}
+
+.wizard-header-actions {
+  margin-left: auto;
+  align-self: flex-start;
+}
+
+.wizard-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #f3f6fb 0%, #eef2f7 100%);
+}
+
+.wizard-layout {
+  min-height: calc(100vh - 11rem);
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.wizard-step-rail {
+  position: sticky;
+  top: 0;
+}
+
+.partner-step-nav {
+  gap: 0.85rem;
+}
+
+.partner-step-nav .nav-link {
+  width: 100%;
+  text-align: left;
+  box-shadow: none;
+}
+
+.wizard-main-content {
+  min-width: 0;
+}
+
+.wizard-stage,
+.wizard-captured-panel {
+  border: 1px solid #d9e2ef;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  background: #ffffff;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.wizard-note-panel {
+  min-height: 100%;
+  padding: 1rem;
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, #fff7ed, #fffbeb);
+  color: #7c2d12;
+}
+
+.centered-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.table-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #fbfdff;
+}
+
+.table-card .table-responsive {
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.captured-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, #eff6ff, #dbeafe);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #1d4ed8;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+:host ::ng-deep .modal-dialog.modal-fullscreen {
+  height: 100vh;
+  margin: 0;
+}
+
+:host ::ng-deep .modal-dialog.modal-fullscreen .modal-content {
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+:host ::ng-deep .modal-dialog.modal-fullscreen .modal-body {
+  padding: 0;
+}
+
+@media (max-width: 1199.98px) {
+  .wizard-layout {
+    min-height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .wizard-step-rail {
+    position: static;
+  }
+}

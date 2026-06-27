@@ -1,0 +1,366 @@
+<div class="container-fluid" *ngIf="!loading && merchant; else loadingState">
+
+  <!-- Banner Header -->
+  <div class="card partner-overview-shell mt-n4 mx-n4 border-0 rounded-0 rounded-bottom-4 overflow-hidden">
+    <div class="partner-overview-banner">
+      <div class="card-body px-4 pb-0">
+        <div class="d-flex align-items-start gap-3 flex-wrap mb-3">
+          <button type="button" class="btn btn-light btn-sm partner-back-button" (click)="goToList()">
+            <i class="ri-arrow-left-line align-bottom me-1"></i> Back to Merchants
+          </button>
+          <div class="partner-avatar"><span>{{ merchantAvatar }}</span></div>
+          <div class="partner-heading">
+            <div class="text-uppercase fw-semibold fs-12 text-muted">Merchant</div>
+            <h3 class="mb-1">{{ merchant!.name }}</h3>
+            <div class="partner-meta hstack gap-3 flex-wrap">
+              <div><i class="ri-hashtag me-1"></i>{{ merchant!.slug }}</div>
+              <div class="vr"></div>
+              <div><i class="ri-calendar-line me-1"></i>{{ merchant!.createdAt | date:'mediumDate' }}</div>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <span class="badge rounded-pill" [ngClass]="statusBadgeClass(merchant!.status)">{{ merchant!.status }}</span>
+            </div>
+          </div>
+          <div class="ms-auto d-flex gap-2 align-items-start flex-wrap">
+            <button *ngIf="merchant!.status === 'ACTIVE'" type="button" class="btn btn-sm btn-soft-danger" (click)="suspendMerchant()">Suspend</button>
+            <button *ngIf="merchant!.status === 'SUSPENDED'" type="button" class="btn btn-sm btn-soft-success" (click)="unsuspendMerchant()">Reactivate</button>
+          </div>
+        </div>
+
+        <ul class="nav partner-tabs nav-tabs nav-tabs-custom">
+          <li class="nav-item" *ngFor="let tab of tabs">
+            <button type="button" class="nav-link" [ngClass]="{ active: activeTab === tab.id }" (click)="setActiveTab(tab.id)">
+              {{ tab.label }}
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-danger mt-3" *ngIf="error">{{ error }}</div>
+  <div class="alert alert-success mt-3" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <!-- Tab: Overview -->
+  <div *ngIf="activeTab === 'overview'" class="mt-4">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Merchant Details</h6></div>
+      <div class="card-body">
+        <table class="table table-borderless mb-0">
+          <tbody>
+            <tr>
+              <th class="w-25 text-muted fw-normal">Name</th>
+              <td>{{ merchant!.name }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted fw-normal">Slug</th>
+              <td><code>{{ merchant!.slug }}</code></td>
+            </tr>
+            <tr>
+              <th class="text-muted fw-normal">Status</th>
+              <td><span class="badge" [ngClass]="statusBadgeClass(merchant!.status)">{{ merchant!.status }}</span></td>
+            </tr>
+            <tr>
+              <th class="text-muted fw-normal">ID</th>
+              <td><code class="text-muted small">{{ merchant!.id }}</code></td>
+            </tr>
+            <tr>
+              <th class="text-muted fw-normal">Created</th>
+              <td>{{ merchant!.createdAt | date:'medium' }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted fw-normal">Updated</th>
+              <td>{{ merchant!.updatedAt | date:'medium' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header"><h6 class="mb-0">PSP Rails Summary</h6></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4" *ngFor="let rail of ['CARD', 'MPESA', 'ECOCASH']">
+            <div class="d-flex align-items-center gap-2 p-3 border rounded">
+              <ng-container *ngIf="getPspConfig(rail)">
+                <i class="ri-checkbox-circle-fill text-success fs-18"></i>
+                <div>
+                  <div class="fw-semibold">{{ rail }}</div>
+                  <div class="text-muted small">{{ getPspConfig(rail)!.isActive ? 'Active' : 'Inactive' }}</div>
+                </div>
+              </ng-container>
+              <ng-container *ngIf="!getPspConfig(rail)">
+                <i class="ri-close-circle-line text-muted fs-18"></i>
+                <div class="text-muted">{{ rail }} not configured</div>
+              </ng-container>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: PSP Rails -->
+  <div *ngIf="activeTab === 'psp-rails'" class="mt-4">
+    <div class="alert alert-danger" *ngIf="pspConfigsError">{{ pspConfigsError }}</div>
+    <div class="alert alert-success" *ngIf="pspConfigsSuccess">{{ pspConfigsSuccess }}</div>
+
+    <!-- CARD -->
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0"><i class="ri-bank-card-line me-2"></i>Card (iVeri / Nedbank)</h6>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge" [ngClass]="getPspConfig('CARD') ? (getPspConfig('CARD')!.isActive ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning') : 'bg-secondary-subtle text-secondary'">
+            {{ getPspConfig('CARD') ? (getPspConfig('CARD')!.isActive ? 'Active' : 'Inactive') : 'Not configured' }}
+          </span>
+          <button *ngIf="pspEditingRail !== 'CARD'" type="button" class="btn btn-sm btn-outline-secondary" (click)="editPspRail('CARD')">Configure</button>
+        </div>
+      </div>
+      <div class="card-body" *ngIf="pspEditingRail === 'CARD'" [formGroup]="cardForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">iVeri URL</label>
+            <input type="text" class="form-control" formControlName="url" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Certificate ID</label>
+            <input type="text" class="form-control" formControlName="certId" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">App ID (CIT)</label>
+            <input type="text" class="form-control" formControlName="appIdCit" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">App ID (MIT)</label>
+            <input type="text" class="form-control" formControlName="appIdMit" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Merchant Profile ID</label>
+            <input type="text" class="form-control" formControlName="merchantProfileId" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Mode</label>
+            <select class="form-select" formControlName="mode">
+              <option value="1">1 – Test</option>
+              <option value="0">0 – Production</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" formControlName="isActive" id="cardActive" />
+              <label class="form-check-label" for="cardActive">Active</label>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button type="button" class="btn btn-primary" [disabled]="pspConfigsSaving" (click)="saveCardConfig()">
+            {{ pspConfigsSaving ? 'Saving...' : 'Save' }}
+          </button>
+          <button type="button" class="btn btn-light" (click)="cancelPspEdit()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MPESA -->
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0"><i class="ri-smartphone-line me-2"></i>M-PESA</h6>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge" [ngClass]="getPspConfig('MPESA') ? (getPspConfig('MPESA')!.isActive ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning') : 'bg-secondary-subtle text-secondary'">
+            {{ getPspConfig('MPESA') ? (getPspConfig('MPESA')!.isActive ? 'Active' : 'Inactive') : 'Not configured' }}
+          </span>
+          <button *ngIf="pspEditingRail !== 'MPESA'" type="button" class="btn btn-sm btn-outline-secondary" (click)="editPspRail('MPESA')">Configure</button>
+        </div>
+      </div>
+      <div class="card-body" *ngIf="pspEditingRail === 'MPESA'" [formGroup]="mpesaForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">API Key</label>
+            <input type="text" class="form-control" formControlName="apiKey" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">RSA Public Key</label>
+            <textarea class="form-control" formControlName="rsaPublicKey" rows="3"></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Short Code</label>
+            <input type="text" class="form-control" formControlName="shortCode" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Base URL</label>
+            <input type="text" class="form-control" formControlName="baseUrl" />
+          </div>
+          <div class="col-md-9">
+            <label class="form-label">Callback Base URL</label>
+            <input type="text" class="form-control" formControlName="callbackBaseUrl" />
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" formControlName="isActive" id="mpesaActive" />
+              <label class="form-check-label" for="mpesaActive">Active</label>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button type="button" class="btn btn-primary" [disabled]="pspConfigsSaving" (click)="saveMpesaConfig()">
+            {{ pspConfigsSaving ? 'Saving...' : 'Save' }}
+          </button>
+          <button type="button" class="btn btn-light" (click)="cancelPspEdit()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECOCASH -->
+    <div class="card mb-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h6 class="mb-0"><i class="ri-smartphone-line me-2"></i>EcoCash</h6>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge" [ngClass]="getPspConfig('ECOCASH') ? (getPspConfig('ECOCASH')!.isActive ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning') : 'bg-secondary-subtle text-secondary'">
+            {{ getPspConfig('ECOCASH') ? (getPspConfig('ECOCASH')!.isActive ? 'Active' : 'Inactive') : 'Not configured' }}
+          </span>
+          <button *ngIf="pspEditingRail !== 'ECOCASH'" type="button" class="btn btn-sm btn-outline-secondary" (click)="editPspRail('ECOCASH')">Configure</button>
+        </div>
+      </div>
+      <div class="card-body" *ngIf="pspEditingRail === 'ECOCASH'" [formGroup]="ecocashForm">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control" formControlName="username" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control" formControlName="password" />
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Merchant Code</label>
+            <input type="text" class="form-control" formControlName="merchantCode" />
+          </div>
+          <div class="col-md-9">
+            <label class="form-label">Base URL</label>
+            <input type="text" class="form-control" formControlName="baseUrl" />
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" formControlName="isActive" id="ecocashActive" />
+              <label class="form-check-label" for="ecocashActive">Active</label>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+          <button type="button" class="btn btn-primary" [disabled]="pspConfigsSaving" (click)="saveEcocashConfig()">
+            {{ pspConfigsSaving ? 'Saving...' : 'Save' }}
+          </button>
+          <button type="button" class="btn btn-light" (click)="cancelPspEdit()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: API Keys -->
+  <div *ngIf="activeTab === 'api-keys'" class="mt-4">
+    <div class="alert alert-danger" *ngIf="apiKeysError">{{ apiKeysError }}</div>
+
+    <div class="alert alert-warning" *ngIf="generatedKey">
+      <strong>Copy your API key — it won't be shown again.</strong>
+      <div class="mt-2 d-flex align-items-center gap-2">
+        <code class="flex-grow-1 p-2 bg-white rounded border d-block" style="word-break:break-all">{{ generatedKey }}</code>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="generatedKey = ''">Dismiss</button>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h6 class="mb-0">Generate New API Key</h6></div>
+      <div class="card-body" [formGroup]="apiKeyForm">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-5">
+            <label class="form-label">Key Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" formControlName="name" placeholder="e.g. Production Integration" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Source System</label>
+            <input type="text" class="form-control" formControlName="sourceSystem" placeholder="e.g. portal, web-app" />
+          </div>
+          <div class="col-md-3">
+            <button type="button" class="btn btn-primary w-100" [disabled]="generatingKey" (click)="generateApiKey()">
+              {{ generatingKey ? 'Generating...' : 'Generate Key' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">API Keys</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-nowrap align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Source System</th>
+                <th>Status</th>
+                <th>Last Used</th>
+                <th>Created</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let client of apiClients">
+                <td class="fw-semibold">{{ client.name }}</td>
+                <td><code>{{ client.sourceSystem }}</code></td>
+                <td>
+                  <span class="badge" [ngClass]="client.isActive ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'">
+                    {{ client.isActive ? 'Active' : 'Revoked' }}
+                  </span>
+                </td>
+                <td class="text-muted small">{{ client.lastUsedAt ? (client.lastUsedAt | date:'medium') : 'Never' }}</td>
+                <td class="text-muted small">{{ client.createdAt | date:'medium' }}</td>
+                <td class="text-end">
+                  <button
+                    *ngIf="client.isActive"
+                    type="button"
+                    class="btn btn-sm btn-soft-danger"
+                    [disabled]="revokingId === client.id"
+                    (click)="revokeApiKey(client)"
+                  >
+                    {{ revokingId === client.id ? 'Revoking...' : 'Revoke' }}
+                  </button>
+                </td>
+              </tr>
+              <tr *ngIf="!apiClients.length">
+                <td colspan="6" class="text-center text-muted py-4">
+                  No API keys yet. Generate your first key above.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Payment Links -->
+  <div *ngIf="activeTab === 'payment-links'" class="mt-4">
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <i class="ri-links-line display-5 text-muted"></i>
+        <h5 class="mt-3">Payment Links</h5>
+        <p class="text-muted">View and manage payment links for this merchant.</p>
+        <button type="button" class="btn btn-primary" (click)="viewPaymentLinks()">
+          <i class="ri-external-link-line me-1"></i> View Payment Links
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<ng-template #loadingState>
+  <div class="container-fluid pt-4">
+    <div class="alert alert-danger" *ngIf="error && !loading">{{ error }}</div>
+    <div class="text-center text-muted py-5" *ngIf="loading">
+      <div class="spinner-border spinner-border-sm me-2"></div> Loading merchant...
+    </div>
+  </div>
+</ng-template>

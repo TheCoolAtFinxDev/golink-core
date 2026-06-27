@@ -1,0 +1,53 @@
+{
+  "_comment": "iVeri gateway response codes. Source: https://www.iveri.com/knowsystem/gateway-response-codes-1408",
+  "_note": "userMessage is shown to the end user. Keep it actionable and jargon-free.",
+
+  "iveriResultCodes": {
+    "0":   { "description": "Approved/Successful",                     "userMessage": null, "retryable": false },
+    "1":   { "description": "Timeout waiting for response",            "userMessage": "Payment timed out. Please check your connection and try again.",                               "retryable": true  },
+    "2":   { "description": "Gateway unreachable",                     "userMessage": "Payment gateway is temporarily unavailable. Please try again in a moment.",                  "retryable": true  },
+    "3":   { "description": "Hot card",                                "userMessage": "This card has been flagged as restricted. Please contact your bank immediately.",             "retryable": false },
+    "4":   { "description": "Denied",                                  "userMessage": "Your payment was denied by your bank. Please contact your bank or use a different card.",    "retryable": false },
+    "5":   { "description": "Please call",                             "userMessage": "Please call your bank to authorise this transaction.",                                        "retryable": false },
+    "7":   { "description": "Invalid Authentication Data",             "userMessage": "Card security code (CVV) or 3D Secure data is incorrect. Please check and try again.",       "retryable": true  },
+    "8":   { "description": "Card Type not accepted",                  "userMessage": "This card type is not accepted. Please use a Visa or Mastercard.",                           "retryable": false },
+    "9":   { "description": "Unable to process the transaction",       "userMessage": "Unable to process this transaction. Please try again in a moment.",                          "retryable": true  },
+    "10":  { "description": "Card blocked",                            "userMessage": "Your card has been blocked. Please contact your bank to resolve this.",                      "retryable": false },
+    "11":  { "description": "Invalid Amount",                          "userMessage": "The transaction amount is invalid. Please check and try again.",                             "retryable": true  },
+    "12":  { "description": "Invalid Budget Period",                   "userMessage": "Invalid budget period selected. Please contact support.",                                    "retryable": false },
+    "13":  { "description": "Void unsuccessful",                       "userMessage": "Transaction reversal was unsuccessful. Please contact support.",                             "retryable": false },
+    "14":  { "description": "Invalid Card Number",                     "userMessage": "The card number is invalid. Please check your card details and try again.",                  "retryable": true  },
+    "15":  { "description": "Invalid Track2",                          "userMessage": "Card data could not be read. Please try again or use a different card.",                     "retryable": true  },
+    "16":  { "description": "Invalid Expiry Date/Card Period",         "userMessage": "The card expiry date is invalid or expired. Please check and try again.",                    "retryable": true  },
+    "17":  { "description": "Invalid Account Selection",               "userMessage": "Invalid account selection. Please try again with a different option.",                       "retryable": true  },
+    "18":  { "description": "Invalid Authorisation code",              "userMessage": "Invalid authorisation code. Please try again.",                                              "retryable": true  },
+    "19":  { "description": "Incorrect PIN",                           "userMessage": "Incorrect PIN entered. Please try again. Too many attempts will lock your card.",            "retryable": true  },
+    "20":  { "description": "Device PIN Key expired",                  "userMessage": "Payment terminal error. Please contact support.",                                            "retryable": false },
+    "22":  { "description": "EMV not supported",                       "userMessage": "This card type is not supported for this transaction.",                                      "retryable": false },
+    "23":  { "description": "Card information not present",            "userMessage": "Card information could not be found. Please try again or use a different card.",             "retryable": false },
+    "24":  { "description": "Invalid recurring account",               "userMessage": "Invalid recurring payment account. Please contact support.",                                "retryable": false },
+    "26":  { "description": "Contactless not allowed",                 "userMessage": "Contactless payment is not allowed for this transaction. Please try another method.",        "retryable": true  },
+    "27":  { "description": "Single Tap",                              "userMessage": "Please present your card again to complete the transaction.",                                "retryable": true  },
+    "100": { "description": "File not available for download",         "userMessage": "Payment processing error. Please try again.",                                                "retryable": true  },
+    "101": { "description": "File already uploaded",                   "userMessage": "Duplicate submission detected. Please contact support.",                                     "retryable": false },
+    "255": { "description": "General Error (Exception)",               "userMessage": "A system error occurred. Please try again in a moment.",                                    "retryable": true  }
+  },
+
+  "bankDescriptionPatterns": [
+    { "pattern": "insufficient fund",  "userMessage": "Insufficient funds on your card. Please check your balance or use a different card." },
+    { "pattern": "insufficient",       "userMessage": "Insufficient funds on your card. Please check your balance or use a different card." },
+    { "pattern": "do not honour",      "userMessage": "Your bank declined this transaction. Please contact your bank or use a different card." },
+    { "pattern": "do not honor",       "userMessage": "Your bank declined this transaction. Please contact your bank or use a different card." },
+    { "pattern": "suspected fraud",    "userMessage": "Suspected fraud detected on this card. Please contact your bank immediately." },
+    { "pattern": "refer to issuer",    "userMessage": "Please call your bank to authorise this transaction." },
+    { "pattern": "card issuer unavai", "userMessage": "Your card issuer is temporarily unavailable. Please try again in a few minutes." },
+    { "pattern": "expired card",       "userMessage": "Your card has expired. Please use a valid card." },
+    { "pattern": "card expired",       "userMessage": "Your card has expired. Please use a valid card." },
+    { "pattern": "no card record",     "userMessage": "This card is not recognised by your bank. Please check the details or use a different card." },
+    { "pattern": "restricted card",    "userMessage": "This card is restricted for online purchases. Please contact your bank." },
+    { "pattern": "invalid card",       "userMessage": "The card number is invalid. Please check your card details and try again." },
+    { "pattern": "hot card",           "userMessage": "This card has been flagged as restricted. Please contact your bank immediately." }
+  ],
+
+  "fallback": "Payment declined. Please try again or contact your bank for assistance."
+}

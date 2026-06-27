@@ -1,0 +1,8 @@
+{
+  "name": "@golink-suite/collect-portal-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "collect-portal-e2e"
+  }
+}

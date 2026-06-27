@@ -1,0 +1,705 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum SubscriptionInterval {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum GolinkProduct {
+  TRANSACT
+  COLLECT
+}
+
+enum CollectionRail {
+  CARD
+  BANK
+  MPESA
+  ECOCASH
+  PAYSLIP
+  EMPLOYER
+}
+
+enum BillStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  CANCELED
+  EXPIRED
+}
+
+enum BillType {
+  ADHOC
+  RECURRING
+  CONTRACT
+}
+
+enum OrganizationType {
+  PSO
+  BILLER
+  MERCHANT
+  CUSTOMER_ORG
+  INTERNAL
+}
+
+enum OrganizationMembershipRole {
+  OWNER
+  ADMIN
+  OPERATOR
+  VIEWER
+}
+
+enum OrganizationReadinessStatus {
+  DRAFT
+  INCOMPLETE
+  READY
+  LIVE
+  SUSPENDED
+}
+
+enum OrganizationBillingStatus {
+  NOT_CONFIGURED
+  PENDING
+  ACTIVE
+  PAUSED
+}
+
+enum PartnerOnboardingStatus {
+  LEAD
+  ONBOARDING
+  DOCS_SUBMITTED
+  COMPLIANCE_REVIEW
+  COMMERCIAL_REVIEW
+  APPROVED
+}
+
+enum PricingPlanCode {
+  STARTER
+  GROWTH
+  ENTERPRISE
+  CUSTOM
+}
+
+enum UsageMetricCode {
+  TRANSACTION_COUNT
+  COLLECTION_AMOUNT
+  RETRY_ATTEMPT
+  RETRY_SUCCESS
+  RECOVERED_AMOUNT
+  AI_SCORE
+  DEFAULT_GUARD_SUCCESS
+}
+
+enum UsageEventSyncStatus {
+  PENDING
+  SYNCED
+  FAILED
+  SKIPPED
+}
+
+enum KycSubjectType {
+  CUSTOMER
+  ORGANIZATION
+}
+
+enum KycVerificationType {
+  INDIVIDUAL
+  BUSINESS
+}
+
+enum KycCaseStatus {
+  DRAFT
+  PENDING
+  INPUT_REQUIRED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  FAILED
+  EXPIRED
+}
+
+enum KycDecisionStatus {
+  UNKNOWN
+  APPROVED
+  REJECTED
+  MANUAL_REVIEW
+}
+
+enum CustomerIdentityStatus {
+  DRAFT
+  KYC_INITIATED
+  UNDER_REVIEW
+  VERIFIED
+  RESTRICTED
+  REJECTED
+  SUSPENDED
+}
+
+enum EmploymentType {
+  EMPLOYED
+  SELF_EMPLOYED
+  UNEMPLOYED
+  RETIRED
+  STUDENT
+  OTHER
+}
+
+// ─── Core Collect Models ─────────────────────────────────────────────────────
+
+model Customer {
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  name                   String?
+  phoneNumber            String?
+  alternativePhoneNumber String?
+  externalRef            String?                @unique
+  identityStatus         CustomerIdentityStatus @default(DRAFT)
+  identityDecision       KycDecisionStatus      @default(UNKNOWN)
+  latestKycCaseId        String?
+  identityRiskScore      Float?
+  identityRiskLabels     Json?
+  identityVerifiedAt     DateTime?
+  identityLastChangedAt  DateTime?
+
+  organizationId String?
+  organization   Organization?         @relation(fields: [organizationId], references: [id])
+  kycProfile     CustomerKycProfile?
+  address        CustomerAddress?
+  employer       CustomerEmployer?
+  bankAccounts   CustomerBankAccount[]
+
+  bills    Bill[]
+  kycCases KycCase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([phoneNumber])
+}
+
+model Organization {
+  id           String           @id @default(cuid())
+  type         OrganizationType
+  name         String
+  code         String           @unique
+  logoUrl      String?
+  externalRef  String?
+  contactEmail String?
+  isActive     Boolean          @default(true)
+  meta         Json?
+
+  billers           Biller[]
+  billingProfile    OrganizationBillingProfile?
+  complianceProfile OrganizationComplianceProfile?
+  pricingProfile    OrganizationPricingProfile?
+  customers         Customer[]
+  memberships       OrganizationMembership[]
+  bills             Bill[]
+  usageEvents       OrganizationUsageEvent[]
+  kycCases          KycCase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([externalRef])
+  @@index([isActive])
+}
+
+model Biller {
+  id              String       @id @default(cuid())
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  organizationId  String
+  name            String
+  code            String       @unique
+  profile         String?
+  callbackUrl     String?
+  type            String?
+  defaultCurrency String?
+  meta            Json?
+
+  bills       Bill[]
+  usageEvents OrganizationUsageEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([code])
+}
+
+model Bill {
+  id             String                @id @default(cuid())
+  externalBillId String                @unique
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  organizationId String
+  product        GolinkProduct         @default(COLLECT)
+  biller         Biller                @relation(fields: [billerId], references: [id])
+  billerId       String
+  type           BillType              @default(ADHOC)
+  collectionRail CollectionRail?
+  customer       Customer?             @relation(fields: [customerId], references: [id])
+  customerId     String?
+  amount         Int
+  currency       String
+  description    String?
+  startDate      DateTime?
+  endDate        DateTime?
+  interval       SubscriptionInterval?
+  status         BillStatus            @default(PENDING)
+  meta           Json?
+
+  paymentProjections PaymentProjection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([billerId])
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([externalBillId])
+  @@index([status])
+}
+
+// Projection updated by the Redis consumer reading golink.transact.events
+model PaymentProjection {
+  id                String   @id @default(cuid())
+  transactPaymentId String   @unique
+  bill              Bill?    @relation(fields: [billId], references: [id])
+  billId            String?
+  merchantId        String
+  amount            Int
+  currency          String
+  status            String // mirrors PaymentStatus from transact-api
+  rail              String // mirrors CollectionRail key from transact-api
+  pspReference      String?
+  failureReason     String?
+  occurredAt        DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([billId])
+  @@index([status])
+  @@index([occurredAt])
+}
+
+// ─── KYC ─────────────────────────────────────────────────────────────────────
+
+model CustomerKycProfile {
+  id                    String    @id @default(cuid())
+  customer              Customer  @relation(fields: [customerId], references: [id])
+  customerId            String    @unique
+  // Personal details as they appear on ID document
+  firstName             String?
+  lastName              String?
+  dateOfBirth           DateTime?
+  nationality           String?
+  nationalIdNumber      String?
+  passportNumber        String?
+  idDocumentType        String?
+  idDocumentNumber      String?
+  idDocumentCountry     String?
+  // KYC verification
+  selfieFileUrl         String?
+  livenessCheckStatus   String?
+  sourceOfFundsRequired Boolean   @default(false)
+  sourceOfFundsNote     String?
+  metadata              Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model CustomerAddress {
+  id           String   @id @default(cuid())
+  customer     Customer @relation(fields: [customerId], references: [id])
+  customerId   String   @unique
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  province     String?
+  country      String?
+  postalCode   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model CustomerEmployer {
+  id             String         @id @default(cuid())
+  customer       Customer       @relation(fields: [customerId], references: [id])
+  customerId     String         @unique
+  employmentType EmploymentType @default(EMPLOYED)
+  employerName   String?
+  occupation     String?
+  phoneNumber    String?
+  addressLine1   String?
+  city           String?
+  country        String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model CustomerBankAccount {
+  id            String   @id @default(cuid())
+  customer      Customer @relation(fields: [customerId], references: [id])
+  customerId    String
+  bankName      String
+  accountName   String
+  accountNumber String
+  accountType   String?
+  branchCode    String?
+  isPrimary     Boolean  @default(false)
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([customerId])
+}
+
+model KycCase {
+  id                        String              @id @default(cuid())
+  subjectType               KycSubjectType
+  verificationType          KycVerificationType
+  provider                  String              @default("BALLERINE")
+  customer                  Customer?           @relation(fields: [customerId], references: [id])
+  customerId                String?
+  organization              Organization?       @relation(fields: [organizationId], references: [id])
+  organizationId            String?
+  status                    KycCaseStatus       @default(DRAFT)
+  decisionStatus            KycDecisionStatus   @default(UNKNOWN)
+  providerEntityId          String?
+  providerWorkflowRuntimeId String?             @unique
+  correlationId             String?             @unique
+  collectionFlowUrl         String?
+  riskScore                 Float?
+  riskLabels                Json?
+  decisionPayload           Json?
+  metadata                  Json?
+  lastWebhookAt             DateTime?
+  completedAt               DateTime?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  webhookEvents KycWebhookEvent[]
+
+  @@index([customerId])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model KycWebhookEvent {
+  id              String    @id @default(cuid())
+  kycCase         KycCase?  @relation(fields: [kycCaseId], references: [id])
+  kycCaseId       String?
+  provider        String
+  eventName       String
+  providerEventId String?   @unique
+  correlationId   String?
+  signature       String?
+  payload         Json
+  receivedAt      DateTime  @default(now())
+  processedAt     DateTime?
+
+  @@index([kycCaseId])
+}
+
+// ─── Organisation Profile ─────────────────────────────────────────────────────
+
+model OrganizationBillingProfile {
+  id                        String                      @id @default(cuid())
+  organization              Organization                @relation(fields: [organizationId], references: [id])
+  organizationId            String                      @unique
+  readinessStatus           OrganizationReadinessStatus @default(DRAFT)
+  billingStatus             OrganizationBillingStatus   @default(NOT_CONFIGURED)
+  partnerStatus             PartnerOnboardingStatus     @default(LEAD)
+  verificationDecision      KycDecisionStatus           @default(UNKNOWN)
+  latestKycCaseId           String?
+  verificationRiskScore     Float?
+  verificationRiskLabels    Json?
+  verificationApprovedAt    DateTime?
+  verificationLastChangedAt DateTime?
+  billingEmail              String?
+  billingCurrency           String?
+  lagoCustomerId            String?
+  lagoSubscriptionId        String?
+  notes                     String?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+
+  @@index([readinessStatus])
+  @@index([billingStatus])
+  @@index([partnerStatus])
+}
+
+model OrganizationComplianceProfile {
+  id                             String       @id @default(cuid())
+  organization                   Organization @relation(fields: [organizationId], references: [id])
+  organizationId                 String       @unique
+  tradingName                    String?
+  registrationNumber             String?
+  taxNumber                      String?
+  vatNumber                      String?
+  businessLicenseNumber          String?
+  businessLicenseExpiry          DateTime?
+  industryCategory               String?
+  websiteUrl                     String?
+  businessModel                  String?
+  countriesServed                String[]
+  expectedMonthlyVolumeCents     Int?
+  averageTicketSizeCents         Int?
+  settlementCycle                String?
+  technicalIntegrationMethod     String?
+  financeContactName             String?
+  financeContactEmail            String?
+  operationsContactName          String?
+  operationsContactEmail         String?
+  technicalContactName           String?
+  technicalContactEmail          String?
+  disputeContactName             String?
+  disputeContactEmail            String?
+  refundPolicyUrl                String?
+  chargebackProcessNote          String?
+  sourceOfBusiness               String?
+  sourceOfFunds                  String?
+  businessType                   String?
+  taxIdentificationNumber        String?
+  dateOfEstablishment            String?
+  iHaveSigningAuthority          Boolean      @default(false)
+  thereNoCompaniesWithMoreThan25 Boolean      @default(false)
+  mainRepresentative             Json?
+  headquarters                   Json?
+  bankInformation                Json?
+  storeActivity                  Json?
+  metadata                       Json?
+
+  beneficialOwners      BeneficialOwner[]
+  authorizedSignatories AuthorizedSignatory[]
+  settlementAccounts    SettlementAccount[]
+  associatedCompanies   ComplianceAssociatedCompany[]
+  documents             ComplianceDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BeneficialOwner {
+  id                   String                        @id @default(cuid())
+  complianceProfile    OrganizationComplianceProfile @relation(fields: [complianceProfileId], references: [id])
+  complianceProfileId  String
+  firstName            String
+  lastName             String
+  role                 String?
+  dateOfBirth          String?
+  ownershipPercent     Float?
+  nationalIdNumber     String?
+  passportNumber       String?
+  phoneNumber          String?
+  email                String?
+  residentialAddress   Json?
+  isPoliticallyExposed Boolean                       @default(false)
+  isSanctionsMatch     Boolean                       @default(false)
+  metadata             Json?
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+
+  @@index([complianceProfileId])
+}
+
+model ComplianceAssociatedCompany {
+  id                      String                        @id @default(cuid())
+  complianceProfile       OrganizationComplianceProfile @relation(fields: [complianceProfileId], references: [id])
+  complianceProfileId     String
+  registrationNumber      String
+  country                 String
+  companyName             String
+  associationRelationship String?
+  repFirstName            String?
+  repLastName             String?
+  repEmail                String?
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
+
+  @@index([complianceProfileId])
+}
+
+model ComplianceDocument {
+  id                  String                        @id @default(cuid())
+  complianceProfile   OrganizationComplianceProfile @relation(fields: [complianceProfileId], references: [id])
+  complianceProfileId String
+  documentId          String
+  category            String
+  type                String
+  ballerineFileId     String
+  fileName            String?
+  mimeType            String?
+  createdAt           DateTime                      @default(now())
+  updatedAt           DateTime                      @updatedAt
+
+  @@unique([complianceProfileId, documentId])
+  @@index([complianceProfileId])
+}
+
+model AuthorizedSignatory {
+  id                  String                        @id @default(cuid())
+  complianceProfile   OrganizationComplianceProfile @relation(fields: [complianceProfileId], references: [id])
+  complianceProfileId String
+  fullName            String
+  roleTitle           String?
+  nationalIdNumber    String?
+  passportNumber      String?
+  phoneNumber         String?
+  email               String?
+  proofOfAuthorityUrl String?
+  metadata            Json?
+  createdAt           DateTime                      @default(now())
+  updatedAt           DateTime                      @updatedAt
+
+  @@index([complianceProfileId])
+}
+
+model SettlementAccount {
+  id                  String                        @id @default(cuid())
+  complianceProfile   OrganizationComplianceProfile @relation(fields: [complianceProfileId], references: [id])
+  complianceProfileId String
+  bankName            String
+  accountName         String
+  accountNumber       String
+  accountType         String?
+  branchCode          String?
+  currency            String?
+  proofDocumentUrl    String?
+  isPrimary           Boolean                       @default(false)
+  metadata            Json?
+  createdAt           DateTime                      @default(now())
+  updatedAt           DateTime                      @updatedAt
+
+  @@index([complianceProfileId])
+}
+
+// ─── Pricing / Usage ──────────────────────────────────────────────────────────
+
+model OrganizationPricingProfile {
+  id                   String          @id @default(cuid())
+  organization         Organization    @relation(fields: [organizationId], references: [id])
+  organizationId       String          @unique
+  planCode             PricingPlanCode @default(GROWTH)
+  currency             String
+  subscriptionFeeCents Int             @default(0)
+  transactionRateBps   Int             @default(0)
+  minFeeCents          Int             @default(0)
+  retryAttemptFeeCents Int             @default(0)
+  retrySuccessFeeCents Int             @default(0)
+  recoveryRateBps      Int             @default(0)
+  aiScoreFeeCents      Int             @default(0)
+  defaultGuardFeeCents Int             @default(0)
+  discountBps          Int             @default(0)
+  notes                String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@index([planCode])
+  @@index([currency])
+}
+
+model OrganizationUsageEvent {
+  id                String               @id @default(cuid())
+  organization      Organization         @relation(fields: [organizationId], references: [id])
+  organizationId    String
+  biller            Biller?              @relation(fields: [billerId], references: [id])
+  billerId          String?
+  metricCode        UsageMetricCode
+  externalEventId   String               @unique
+  sourceEntityType  String?
+  sourceEntityId    String?
+  quantity          Int?
+  amountCents       Int?
+  currency          String?
+  occurredAt        DateTime
+  syncStatus        UsageEventSyncStatus @default(PENDING)
+  lagoTransactionId String?
+  lastSyncError     String?
+  metadata          Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@index([organizationId, metricCode])
+  @@index([billerId])
+  @@index([syncStatus])
+  @@index([occurredAt])
+}
+
+// ─── IAM ─────────────────────────────────────────────────────────────────────
+
+model SystemUser {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String
+  passwordHash String?
+  isActive     Boolean @default(true)
+
+  memberships OrganizationMembership[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrganizationMembership {
+  id             String                     @id @default(cuid())
+  organization   Organization               @relation(fields: [organizationId], references: [id])
+  organizationId String
+  user           SystemUser                 @relation(fields: [userId], references: [id])
+  userId         String
+  role           OrganizationMembershipRole @default(VIEWER)
+  isActive       Boolean                    @default(true)
+  isPrimary      Boolean                    @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId, role])
+}
+
+model Permission {
+  id          String            @id @default(cuid())
+  code        String            @unique
+  name        String
+  description String?
+  isActive    Boolean           @default(true)
+  grants      PermissionGrant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model PermissionGrant {
+  id               String                     @id @default(cuid())
+  organizationType OrganizationType
+  membershipRole   OrganizationMembershipRole
+  permission       Permission                 @relation(fields: [permissionId], references: [id])
+  permissionId     String
+  isActive         Boolean                    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationType, membershipRole, permissionId])
+  @@index([permissionId])
+  @@index([organizationType, membershipRole, isActive])
+}

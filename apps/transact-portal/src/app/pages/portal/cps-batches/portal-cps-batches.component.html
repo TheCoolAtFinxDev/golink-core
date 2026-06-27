@@ -1,0 +1,113 @@
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+      <h4 class="mb-1">CPS Batch Payments</h4>
+      <p class="text-muted mb-0">Upload CSV files for EFT batch payments via the Clearing and Payment System.</p>
+    </div>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error" (click)="error = ''">{{ error }}</div>
+  <div class="alert alert-success" *ngIf="successMessage" (click)="successMessage = ''">{{ successMessage }}</div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="text-muted text-uppercase fs-12 fw-semibold mb-2">Total Batches</div>
+          <div class="stat-value">{{ batches.length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Drafts</div>
+            <span class="badge bg-secondary-subtle text-secondary">DRAFT</span>
+          </div>
+          <div class="stat-value">{{ draftCount }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Submitted</div>
+            <span class="badge bg-info-subtle text-info">SUBMITTED</span>
+          </div>
+          <div class="stat-value">{{ submittedCount }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card list-card mb-4">
+    <div class="card-header border-0">
+      <h5 class="card-title mb-0">Upload New Batch</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label">Merchant ID <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" [(ngModel)]="merchantId" placeholder="Merchant UUID" />
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">CPS CSV File <span class="text-danger">*</span></label>
+          <input #fileInput type="file" class="form-control" accept=".csv,.txt" (change)="onFileSelected($event)" />
+        </div>
+        <div class="col-md-3">
+          <button class="btn btn-primary w-100" [disabled]="uploading || !selectedFile || !merchantId" (click)="upload()">
+            <span *ngIf="uploading" class="spinner-border spinner-border-sm me-1"></span>
+            <i class="ri-upload-2-line align-bottom me-1" *ngIf="!uploading"></i>
+            Upload
+          </button>
+        </div>
+      </div>
+      <div class="form-text mt-2">
+        The file will be stored as a DRAFT batch. Review and submit it to the clearing house when ready.
+      </div>
+    </div>
+  </div>
+
+  <div class="card list-card">
+    <div class="card-header border-0 pb-0">
+      <h5 class="card-title mb-0">Batch History</h5>
+    </div>
+    <div class="card-body">
+      <div class="text-muted mb-3" *ngIf="loading">Loading batches...</div>
+      <div class="table-responsive" *ngIf="!loading">
+        <table class="table table-nowrap align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Sequence #</th>
+              <th>Merchant</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th>Created</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let batch of batches">
+              <td><span class="fw-semibold">#{{ batch.sequenceNumber }}</span></td>
+              <td class="font-monospace small">{{ batch.merchantId | slice:0:12 }}...</td>
+              <td><span class="badge rounded-pill" [ngClass]="statusBadge(batch.status)">{{ batch.status }}</span></td>
+              <td>{{ batch.submittedAt ? (batch.submittedAt | date:'dd MMM HH:mm') : '—' }}</td>
+              <td>{{ batch.createdAt | date:'dd MMM HH:mm' }}</td>
+              <td class="text-end">
+                <button *ngIf="batch.status === 'DRAFT'" class="btn btn-sm btn-primary" (click)="submit(batch)">
+                  <i class="ri-send-plane-line align-bottom me-1"></i>Submit
+                </button>
+                <span *ngIf="batch.status !== 'DRAFT'" class="text-muted small">—</span>
+              </td>
+            </tr>
+            <tr *ngIf="!batches.length">
+              <td colspan="6" class="text-center text-muted py-4">No batches yet. Upload a CSV to get started.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

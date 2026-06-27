@@ -1,0 +1,124 @@
+{
+  "name": "transact-portal",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/transact-portal/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/transact-portal",
+        "browser": "apps/transact-portal/src/main.ts",
+        "polyfills": ["zone.js"],
+        "tsConfig": "apps/transact-portal/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/transact-portal/public"
+          },
+          {
+            "glob": "**/*",
+            "input": "apps/transact-portal/src/assets",
+            "output": "assets"
+          }
+        ],
+        "styles": [
+          "node_modules/prismjs/themes/prism.css",
+          "node_modules/shepherd.js/dist/css/shepherd.css",
+          "node_modules/@ctrl/ngx-emoji-mart/picker.css",
+          "apps/transact-portal/src/styles.scss",
+          "apps/transact-portal/src/assets/scss/bootstrap.scss",
+          "apps/transact-portal/src/assets/scss/icons.scss",
+          "apps/transact-portal/src/assets/scss/app.scss"
+        ],
+        "scripts": [
+          "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js",
+          "node_modules/metismenujs/dist/metismenujs.min.js"
+        ],
+        "stylePreprocessorOptions": {
+          "includePaths": [
+            ".",
+            "apps/transact-portal",
+            "apps/transact-portal/src",
+            "apps/transact-portal/src/assets/scss"
+          ],
+          "sass": {
+            "silenceDeprecations": [
+              "mixed-decls",
+              "color-functions",
+              "global-builtin",
+              "import"
+            ]
+          }
+        }
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "2mb",
+              "maximumError": "5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "10kb",
+              "maximumError": "20kb"
+            }
+          ],
+          "outputHashing": "all",
+          "optimization": {
+            "scripts": true,
+            "styles": { "minify": true, "inlineCritical": false },
+            "fonts": { "inline": false }
+          }
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "options": {
+        "proxyConfig": "apps/transact-portal/proxy.conf.json"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "transact-portal:build:production"
+        },
+        "development": {
+          "buildTarget": "transact-portal:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "test": {
+      "executor": "@angular/build:unit-test",
+      "options": {
+        "watch": false
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "transact-portal:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/transact-portal/browser",
+        "spa": true
+      }
+    }
+  }
+}

@@ -1,0 +1,47 @@
+<div class="modal-header">
+  <h5 class="modal-title">New Merchant</h5>
+  <button type="button" class="btn-close" aria-label="Close" (click)="activeModal.dismiss('cancel')"></button>
+</div>
+
+<div class="modal-body">
+  <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
+
+  <form [formGroup]="form">
+    <div class="mb-3">
+      <label class="form-label">Merchant Name <span class="text-danger">*</span></label>
+      <input
+        type="text"
+        class="form-control"
+        formControlName="name"
+        placeholder="e.g. Acme Retail"
+        (input)="onNameChange()"
+      />
+      <div class="text-danger small mt-1" *ngIf="form.get('name')!.touched && form.get('name')!.invalid">
+        Name is required (min 2 characters).
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Slug <span class="text-danger">*</span></label>
+      <input
+        type="text"
+        class="form-control"
+        formControlName="slug"
+        placeholder="e.g. acme-retail"
+      />
+      <div class="form-text">
+        URL-safe identifier — lowercase letters, numbers, and hyphens only. Auto-generated from name.
+      </div>
+      <div class="text-danger small mt-1" *ngIf="form.get('slug')!.touched && form.get('slug')!.invalid">
+        Slug must contain only lowercase letters, numbers, and hyphens.
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="modal-footer">
+  <button type="button" class="btn btn-light" (click)="activeModal.dismiss('cancel')">Cancel</button>
+  <button type="button" class="btn btn-primary" [disabled]="saving" (click)="create()">
+    {{ saving ? 'Creating...' : 'Create Merchant' }}
+  </button>
+</div>

@@ -1,0 +1,190 @@
+<div class="container-fluid">
+  <div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+      <h4 class="mb-1">Users</h4>
+      <p class="text-muted mb-0">System users, portal credentials, and organization memberships.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+      <button type="button" class="btn btn-primary" (click)="createUser()">
+        <i class="ri-add-line align-bottom me-1"></i> New User
+      </button>
+    </div>
+  </div>
+
+  <div class="alert alert-danger" *ngIf="error">{{ error }}</div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Total Users</div>
+          </div>
+          <div class="stat-value">{{ total }}</div>
+          <div class="text-muted small">All users in the system</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">Active</div>
+            <span class="badge bg-success-subtle text-success">ACTIVE</span>
+          </div>
+          <div class="stat-value">{{ activeCount }}</div>
+          <div class="text-muted small">Users currently enabled for access</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-4 col-md-6">
+      <div class="card stat-card">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="text-muted text-uppercase fs-12 fw-semibold">With Memberships</div>
+          </div>
+          <div class="stat-value">{{ withMembershipCount }}</div>
+          <div class="text-muted small">Users linked to at least one merchant</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card list-card">
+    <div class="card-header border-0 pb-0">
+      <div class="filter-shell">
+        <div class="row g-3 align-items-end">
+          <div class="col-lg-4">
+            <label class="form-label">Search</label>
+            <div class="search-field">
+              <i class="ri-search-line search-field-icon"></i>
+              <input
+                type="text"
+                class="form-control"
+                [(ngModel)]="search"
+                [ngModelOptions]="{ standalone: true }"
+                (keyup.enter)="applyFilters()"
+                placeholder="Search by name or email"
+              />
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4">
+            <label class="form-label">Status</label>
+            <select class="form-select" [(ngModel)]="statusFilter" [ngModelOptions]="{ standalone: true }">
+              <option value="all">All</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4">
+            <label class="form-label">Role</label>
+            <select class="form-select" [(ngModel)]="roleFilter" [ngModelOptions]="{ standalone: true }">
+              <option value="">All</option>
+              <option *ngFor="let role of roleOptions" [value]="role">{{ role }}</option>
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4">
+            <label class="form-label">Organization</label>
+            <select class="form-select" [(ngModel)]="organizationFilter" [ngModelOptions]="{ standalone: true }">
+              <option value="">{{ filterLoading ? 'Loading...' : 'All' }}</option>
+              <option *ngFor="let org of organizations" [value]="org.id">{{ org.code }} · {{ org.name }}</option>
+            </select>
+          </div>
+          <div class="col-lg-2 d-flex gap-2">
+            <button type="button" class="btn btn-primary w-100" (click)="applyFilters()">Apply</button>
+            <button type="button" class="btn btn-light w-100" (click)="clearFilters()">Reset</button>
+          </div>
+        </div>
+
+        <div class="filter-meta mt-3">
+          <span class="filter-chip">Loaded: {{ total }}</span>
+          <span class="filter-chip">Page: {{ currentPage }}</span>
+          <span class="filter-chip" *ngIf="roleFilter">Role: {{ roleFilter }}</span>
+          <span class="filter-chip" *ngIf="organizationFilter">Organization filtered</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="text-muted mb-3" *ngIf="loading">Loading users...</div>
+
+      <div class="table-responsive" *ngIf="!loading">
+        <table class="table table-nowrap align-middle mb-0">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Status</th>
+              <th>Portal Access</th>
+              <th>Memberships</th>
+              <th>Created</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of users" class="biller-row" (click)="openUser(user.id)">
+              <td>
+                <div class="fw-semibold">{{ user.name }}</div>
+                <div class="text-muted small">{{ user.email }}</div>
+              </td>
+              <td>
+                <span class="badge rounded-pill" [ngClass]="user.isActive ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'">
+                  {{ user.isActive ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td>
+                <span class="badge rounded-pill" [ngClass]="user.hasPassword ? 'bg-success-subtle text-success' : 'bg-warning-subtle text-warning'">
+                  {{ user.hasPassword ? 'Configured' : 'Not Set' }}
+                </span>
+              </td>
+              <td>
+                <div class="fw-medium">{{ user.memberships.length }} membership{{ user.memberships.length === 1 ? '' : 's' }}</div>
+                <div class="text-muted small">{{ membershipSummary(user) }}</div>
+              </td>
+              <td>{{ user.createdAt ? (user.createdAt | date:'mediumDate') : '-' }}</td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-light" (click)="$event.stopPropagation(); openUser(user.id)">Open</button>
+              </td>
+            </tr>
+            <tr *ngIf="users.length === 0">
+              <td colspan="6" class="text-center text-muted py-4">No users match the current filters.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card-footer" *ngIf="!loading">
+      <div class="row align-items-center g-3">
+        <div class="col-lg-4">
+          <div class="text-muted">
+            Showing <span class="fw-semibold">{{ pageStart }}</span> to
+            <span class="fw-semibold">{{ pageEnd }}</span> of
+            <span class="fw-semibold">{{ total }}</span> users
+          </div>
+        </div>
+        <div class="col-lg-2">
+          <div class="d-flex align-items-center justify-content-lg-center gap-2">
+            <label class="text-muted mb-0 small">Rows</label>
+            <select class="form-select form-select-sm page-size-select" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+              <option *ngFor="let option of pageSizeOptions" [ngValue]="option">{{ option }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="d-flex justify-content-lg-end">
+            <ngb-pagination
+              class="pagination-separated mb-0"
+              [collectionSize]="total"
+              [(page)]="currentPage"
+              [pageSize]="pageSize"
+              [maxSize]="5"
+              [ellipses]="true"
+              [boundaryLinks]="true"
+              (pageChange)="onPageChange($event)"
+            ></ngb-pagination>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
