@@ -20,6 +20,8 @@ enum PspRail {
   MPESA
   ECOCASH
   EFT
+  CPAY
+  PAYSLIP
 }
 
 enum SourceSystem {

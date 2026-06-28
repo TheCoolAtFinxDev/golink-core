@@ -1,4 +1,4 @@
-export type PspRail = 'CARD' | 'MPESA' | 'ECOCASH' | 'EFT';
+export type PspRail = 'CARD' | 'MPESA' | 'ECOCASH' | 'EFT' | 'CPAY' | 'PAYSLIP';
 export type PaymentDirection = 'DEBIT' | 'CREDIT';
 export type ExecutionStatus = 'SUCCESS' | 'FAILED' | 'PENDING';
 

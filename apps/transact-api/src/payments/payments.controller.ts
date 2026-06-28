@@ -341,4 +341,9 @@ export class PspCallbackController {
   ecocashCallback(@Body() body: unknown) {
     return this.paymentsService.handlePspCallback('ECOCASH', body);
   }
+
+  @Post('cpay/callback')
+  cpayCallback(@Body() body: unknown) {
+    return this.paymentsService.handlePspCallback('CPAY', body);
+  }
 }

@@ -671,6 +671,73 @@ export class PaymentsService {
     this.logger.log(`PSP callback received rail=${rail} body=${JSON.stringify(body)}`);
     if (rail === 'MPESA') return this.handleMpesaCallback(body as Record<string, unknown>);
     else if (rail === 'ECOCASH') await this.handleEcocashCallback(body as Record<string, unknown>);
+    else if (rail === 'CPAY') await this.handleCpayCallback(body as Record<string, unknown>);
+  }
+
+  private async handleCpayCallback(body: Record<string, unknown>): Promise<void> {
+    // C-Pay sends extTransactionId (our GLNK- correlation ID) and paymentRequestStatus
+    const extTransactionId = (body['extTransactionId'] ?? body['requestReference']) as string | undefined;
+    const cPayTransactionId = body['cPayTransactionId'] as string | undefined;
+    const paymentRequestStatus = ((body['paymentRequestStatus'] as string | undefined) ?? '').toLowerCase();
+
+    if (!extTransactionId) {
+      this.logger.warn('C-Pay callback missing extTransactionId');
+      return;
+    }
+
+    // Our pspReference is either the cPayTransactionId (if returned in initiation) or extTransactionId
+    const execution = await this.prisma.paymentExecution.findFirst({
+      where: { pspReference: { in: [cPayTransactionId ?? '', extTransactionId].filter(Boolean) }, pspRail: 'CPAY' },
+    });
+
+    if (!execution) {
+      this.logger.warn(`C-Pay callback: no execution for extTransactionId=${extTransactionId}`);
+      return;
+    }
+
+    const success = paymentRequestStatus === 'processed' || paymentRequestStatus === 'success';
+    const failed = ['denied', 'canceled', 'cancelled', 'expired', 'reversed', 'failed'].includes(paymentRequestStatus);
+
+    if (!success && !failed) {
+      this.logger.log(`C-Pay callback: intermediate status=${paymentRequestStatus} — ignoring`);
+      return;
+    }
+
+    const newExecStatus = success ? 'SUCCESS' : 'FAILED';
+    const newStatus: PaymentStatus = success ? 'SUCCEEDED' : 'FAILED';
+
+    await this.prisma.paymentExecution.update({
+      where: { id: execution.id },
+      data: {
+        status: newExecStatus,
+        pspReference: cPayTransactionId ?? execution.pspReference,
+        responsePayload: body as object,
+        completedAt: new Date(),
+      },
+    });
+
+    const instruction = await this.prisma.paymentInstruction.findUnique({
+      where: { id: execution.paymentInstructionId },
+    });
+    if (!instruction || instruction.status !== 'PROCESSING') return;
+
+    await this.prisma.paymentInstruction.update({ where: { id: instruction.id }, data: { status: newStatus } });
+
+    if (newStatus === 'SUCCEEDED') {
+      await this.settleSplits(instruction.id);
+    }
+
+    await this.publisher.publishPaymentStatusChanged({
+      paymentId: instruction.id,
+      billId: null,
+      merchantId: instruction.merchantId,
+      previousStatus: 'PROCESSING',
+      newStatus,
+      rail: 'CPAY',
+      pspReference: cPayTransactionId ?? extTransactionId,
+      failureReason: success ? null : ((body['description'] as string | undefined) ?? 'C-Pay payment failed'),
+    });
+    await this.webhooks.dispatch(instruction.id, newStatus === 'SUCCEEDED' ? 'payment.succeeded' : 'payment.failed');
   }
 
   private async handleEcocashCallback(body: Record<string, unknown>): Promise<void> {
